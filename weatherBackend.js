@@ -1,19 +1,19 @@
 export default async function handler(req, res) {
   const city = req.query.city || "San Luis";
 
-  const OPENWEATHER_KEY = "TU_API_KEY";
-  const WEATHERBIT_KEY = "TU_API_KEY";
+  const OPENWEATHER_KEY = process.env.OPENWEATHER_KEY;
+  const WEATHERBIT_KEY = process.env.WEATHERBIT_KEY;
 
   try {
     // OpenWeather
     const owRes = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${city},AR&units=metric&appid=${80bb3082e67e9526638c99a6e59685fe}`
+      `https://api.openweathermap.org/data/2.5/weather?q=${city},AR&units=metric&appid=${OPENWEATHER_KEY}`
     );
     const owData = await owRes.json();
 
     // Weatherbit
     const wbRes = await fetch(
-      `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${f5d5d9cf83ba4fefb37ddb14ec2beb6a}`
+      `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`
     );
     const wbData = await wbRes.json();
 
