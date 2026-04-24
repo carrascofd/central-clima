@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Clima 360</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      text-align: center;
+      padding: 40px;
+    }
+    .card {
+      background: #1e293b;
+      padding: 20px;
+      margin: 10px;
+      border-radius: 10px;
+      display: inline-block;
+      width: 200px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🌦 Clima 360</h1>
+
+<input type="text" id="city" placeholder="Ciudad" value="San Luis">
+<button onclick="getWeather()">Consultar</button>
+
+<div id="results"></div>
+
+<script>
+async function getWeather() {
+  const city = document.getElementById("city").value;
+
+  const res = await fetch(`/api/weather?city=${city}`);
+  const data = await res.json();
+
+  const sources = data.sources;
+
+  document.getElementById("results").innerHTML = `
+    <h2>${data.city}</h2>
+
+    <div class="card">
+      <h3>OpenWeather</h3>
+      <p>${sources.openweather.temp ?? "-"} °C</p>
+      <small>${sources.openweather.desc ?? ""}</small>
+    </div>
+
+    <div class="card">
+      <h3>Weatherbit</h3>
+      <p>${sources.weatherbit.temp ?? "-"} °C</p>
+      <small>${sources.weatherbit.desc ?? ""}</small>
+    </div>
+
+    <div class="card">
+      <h3>SMN</h3>
+      <p>${sources.smn.temp ?? "-"} °C</p>
+    </div>
+
+    <h2>Promedio: ${data.average ?? "-"} °C</h2>
+  `;
+}
+</script>
+
+</body>
+</html>
