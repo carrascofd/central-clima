@@ -169,6 +169,13 @@ function renderWeather(data, isGeo) {
     </div>
 
     <h2>🌡 Promedio: ${data.average ?? "-"} °C</h2>
+	
+	<h2>🧠 Consenso: ${data.consensus ?? "-"} °C</h2>
+	<p>
+	  Confianza: ${data.confidence}
+	  <br>
+	  <small>${data.note}</small>
+	</p>
   `;
 }
 

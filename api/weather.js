@@ -122,7 +122,7 @@ export default async function handler(req, res) {
         }
       }
     };
-
+	
     // -----------------------------
     // Promedio
     // -----------------------------
@@ -133,7 +133,94 @@ export default async function handler(req, res) {
     result.average = temps.length
       ? (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)
       : null;
+	
+	// -----------------------------
+	// CONSENSO INTELIGENTE
+	// -----------------------------
 
+	const ow = result.sources.openweather.temp;
+	const wb = result.sources.weatherbit.temp;
+	const smn = result.sources.smn.temp;
+	const smnDistance = result.sources.smn.distance;
+
+	// helper
+	function diff(a, b) {
+	  return Math.abs(a - b);
+	}
+
+	// lista de fuentes válidas
+	let values = [];
+
+	if (ow != null) values.push({ name: "ow", value: ow });
+	if (wb != null) values.push({ name: "wb", value: wb });
+	if (smn != null) values.push({ name: "smn", value: smn });
+
+	// -----------------------------
+	// 1. Detectar consenso base (OW + WB)
+	// -----------------------------
+	let consensus = null;
+	let confidence = "baja";
+	let note = "";
+
+	if (ow != null && wb != null) {
+	  const diffOWWB = diff(ow, wb);
+
+	  if (diffOWWB <= 2) {
+		consensus = (ow + wb) / 2;
+		confidence = "alta";
+	  } else if (diffOWWB <= 4) {
+		consensus = (ow + wb) / 2;
+		confidence = "media";
+		note = "Diferencia moderada entre modelos";
+	  } else {
+		consensus = ow; // fallback
+		confidence = "baja";
+		note = "Alta discrepancia entre modelos";
+	  }
+	}
+
+	// -----------------------------
+	// 2. Evaluar SMN (dato real)
+	// -----------------------------
+	if (smn != null) {
+	  const closeEnough = smnDistance != null && smnDistance < 50; // km aprox
+
+	  if (consensus != null) {
+		const diffSMN = diff(consensus, smn);
+
+		if (closeEnough && diffSMN <= 2) {
+		  // SMN confiable → lo incluimos
+		  consensus = (consensus + smn) / 2;
+		  confidence = "alta";
+		  note = "SMN alineado con modelos";
+		} else if (closeEnough && diffSMN <= 5) {
+		  confidence = "media";
+		  note = "SMN cercano con diferencia moderada";
+		} else {
+		  note = "SMN descartado por diferencia alta o lejanía";
+		}
+	  } else {
+		// solo SMN disponible
+		consensus = smn;
+		confidence = "media";
+		note = "Solo SMN disponible";
+	  }
+	}
+
+	// -----------------------------
+	// 3. Redondeo final
+	// -----------------------------
+	if (consensus != null) {
+	  consensus = Number(consensus.toFixed(1));
+	}
+
+	// -----------------------------
+	// 4. Agregar al resultado
+	// -----------------------------
+	result.consensus = consensus;
+	result.confidence = confidence;
+	result.note = note;
+	
     res.status(200).json(result);
 
   } catch (error) {
