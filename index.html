@@ -59,9 +59,10 @@ async function getWeather() {
     </div>
 
     <div class="card">
-      <h3>SMN</h3>
-      <p>${sources.smn.temp ?? "-"} °C</p>
-    </div>
+	  <h3>SMN</h3>
+	  <p>${sources.smn.temp ?? "-"} °C</p>
+	  <small>${sources.smn.desc ?? ""}</small>
+	</div>
 
     <h2>Promedio: ${data.average ?? "-"} °C</h2>
   `;

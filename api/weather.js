@@ -55,15 +55,17 @@ export default async function handler(req, res) {
     let minDistance = Infinity;
 
     for (const station of smnData) {
-      const temp = station.temperature ?? station.temp;
+      const stLat = station.lat ?? station.latitud;
+	  const stLon = station.lon ?? station.longitud;
+	  const temp = station.temperature ?? station.temp;
 
-      if (
-        station.lat == null ||
-        station.lon == null ||
-        temp == null
-      ) continue;
+	  if (
+		stLat == null ||
+		stLon == null ||
+		temp == null
+	  ) continue;
 
-      const distance = getDistance(lat, lon, station.lat, station.lon);
+	  const distance = getDistance(lat, lon, stLat, stLon);
 
       if (distance < minDistance) {
         minDistance = distance;
