@@ -22,9 +22,32 @@ export default async function handler(req, res) {
       `https://ws.smn.gob.ar/map_items/weather`
     );
     const smnData = await smnRes.json();
+	
+	const lat = owData.coord?.lat;
+	const lon = owData.coord?.lon;
+	
+	function getDistance(lat1, lon1, lat2, lon2) {
+	  const dLat = lat1 - lat2;
+	  const dLon = lon1 - lon2;
+	  return Math.sqrt(dLat * dLat + dLon * dLon);
+	}
 
-    // Buscar estación cercana (simplificado)
-    const smnTemp = smnData[0]?.temperature;
+    // Buscar estación cercana
+    let closestStation = null;
+	let minDistance = Infinity;
+
+	for (const station of smnData) {
+	  if (!station.lat || !station.lon || !station.temperature) continue;
+
+	  const distance = getDistance(lat, lon, station.lat, station.lon);
+
+	  if (distance < minDistance) {
+		minDistance = distance;
+		closestStation = station;
+	  }
+	}
+
+	const smnTemp = closestStation?.temperature;
 
     const result = {
       city,
@@ -39,6 +62,7 @@ export default async function handler(req, res) {
         },
         smn: {
           temp: smnTemp
+		  desc: "SMN estación elegida: ", closestStation?.name;
         }
       }
     };
