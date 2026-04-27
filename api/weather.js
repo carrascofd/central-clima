@@ -34,40 +34,52 @@ export default async function handler(req, res) {
     const owTemp = owData.main?.temp ?? null;
 
     // -----------------------------
-    // 2. Weatherbit (ROBUSTO)
-    // -----------------------------
-    let wbTemp = null;
-    let wbDesc = "";
+	// 2. Weatherbit (FIX REAL)
+	// -----------------------------
+	let wbTemp = null;
+	let wbDesc = "";
 
-    try {
-      let wbUrl;
+	try {
+	  let wbUrl;
 
-      if (latQuery && lonQuery) {
-        wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${latQuery}&lon=${lonQuery}&key=${WEATHERBIT_KEY}`;
-      } else {
-        wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
-      }
+	  if (latQuery && lonQuery) {
+		wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${latQuery}&lon=${lonQuery}&key=${WEATHERBIT_KEY}`;
+	  } else {
+		wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
+	  }
 
-      let wbRes = await fetch(wbUrl);
+	  let wbRes = await fetch(wbUrl);
+	  let wbData = null;
 
-      // fallback a coordenadas si falla por ciudad
-      if (!wbRes.ok && owData.coord) {
-        const fallbackUrl = `https://api.weatherbit.io/v2.0/current?lat=${owData.coord.lat}&lon=${owData.coord.lon}&key=${WEATHERBIT_KEY}`;
-        wbRes = await fetch(fallbackUrl);
-      }
+	  if (wbRes.ok) {
+		wbData = await wbRes.json();
+	  }
 
-      if (wbRes.ok) {
-        const wbData = await wbRes.json();
-        wbTemp = wbData?.data?.[0]?.temp ?? null;
-        wbDesc = wbData?.data?.[0]?.weather?.description ?? "";
-      } else {
-        const errText = await wbRes.text();
-        console.error("Weatherbit error:", errText);
-      }
+	  // 🔥 VALIDACIÓN REAL (CLAVE)
+	  if (!wbData || !wbData.data || !wbData.data[0]) {
+		console.warn("Weatherbit inválido, intentando fallback a coords");
 
-    } catch (err) {
-      console.error("Weatherbit exception:", err);
-    }
+		if (owData.coord) {
+		  const fallbackUrl = `https://api.weatherbit.io/v2.0/current?lat=${owData.coord.lat}&lon=${owData.coord.lon}&key=${WEATHERBIT_KEY}`;
+		  const fallbackRes = await fetch(fallbackUrl);
+
+		  if (fallbackRes.ok) {
+			wbData = await fallbackRes.json();
+		  }
+		}
+	  }
+
+	  // 🔥 VALIDACIÓN FINAL
+	  if (wbData && wbData.data && wbData.data[0]) {
+		wbTemp = wbData.data[0].temp ?? null;
+		wbDesc = wbData.data[0].weather?.description ?? "";
+	  } else {
+		console.error("Weatherbit sin datos válidos:", wbData);
+	  }
+
+	} catch (err) {
+	  console.error("Weatherbit exception:", err);
+	}
 
     // -----------------------------
     // 3. SMN (SELECCIÓN EQUILIBRADA)
