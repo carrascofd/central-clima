@@ -31,30 +31,46 @@ export default async function handler(req, res) {
       ? parseFloat(lonQuery)
       : owData.coord?.lon;
 
-    // -----------------------------
-    // 2. Weatherbit
-    // -----------------------------
-    let wbUrl;
+    const owTemp = owData.main?.temp ?? null;
 
-    if (latQuery && lonQuery) {
-      wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${latQuery}&lon=${lonQuery}&key=${WEATHERBIT_KEY}`;
-    } else {
-      wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
+    // -----------------------------
+    // 2. Weatherbit (ROBUSTO)
+    // -----------------------------
+    let wbTemp = null;
+    let wbDesc = "";
+
+    try {
+      let wbUrl;
+
+      if (latQuery && lonQuery) {
+        wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${latQuery}&lon=${lonQuery}&key=${WEATHERBIT_KEY}`;
+      } else {
+        wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
+      }
+
+      let wbRes = await fetch(wbUrl);
+
+      // fallback a coordenadas si falla por ciudad
+      if (!wbRes.ok && owData.coord) {
+        const fallbackUrl = `https://api.weatherbit.io/v2.0/current?lat=${owData.coord.lat}&lon=${owData.coord.lon}&key=${WEATHERBIT_KEY}`;
+        wbRes = await fetch(fallbackUrl);
+      }
+
+      if (wbRes.ok) {
+        const wbData = await wbRes.json();
+        wbTemp = wbData?.data?.[0]?.temp ?? null;
+        wbDesc = wbData?.data?.[0]?.weather?.description ?? "";
+      } else {
+        const errText = await wbRes.text();
+        console.error("Weatherbit error:", errText);
+      }
+
+    } catch (err) {
+      console.error("Weatherbit exception:", err);
     }
 
-    const wbRes = await fetch(wbUrl);
-    const wbData = wbRes.ok ? await wbRes.json() : null;
-
-    const owTemp = owData.main?.temp ?? null;
-    const wbTemp = wbData?.data?.[0]?.temp ?? null;
-
-    const modelAvg =
-      owTemp != null && wbTemp != null
-        ? (owTemp + wbTemp) / 2
-        : owTemp ?? wbTemp ?? null;
-
     // -----------------------------
-    // 3. SMN (SELECCIÓN CORREGIDA)
+    // 3. SMN (SELECCIÓN EQUILIBRADA)
     // -----------------------------
     const smnRes = await fetch(`https://ws.smn.gob.ar/map_items/weather`);
     const smnData = smnRes.ok ? await smnRes.json() : [];
@@ -65,9 +81,13 @@ export default async function handler(req, res) {
       return Math.sqrt(dLat * dLat + dLon * dLon) * 111;
     }
 
+    const modelAvg =
+      owTemp != null && wbTemp != null
+        ? (owTemp + wbTemp) / 2
+        : owTemp ?? wbTemp ?? null;
+
     const normalizedCity = city?.toLowerCase()?.trim();
 
-    // construir estaciones válidas
     const stations = smnData
       .map(st => ({
         ...st,
@@ -81,7 +101,6 @@ export default async function handler(req, res) {
         st.temp != null
       );
 
-    // calcular distancia
     const stationsWithDistance = stations.map(st => ({
       ...st,
       distance:
@@ -90,39 +109,36 @@ export default async function handler(req, res) {
           : Infinity
     }));
 
-    // -----------------------------
-    // FILTRO POR RADIO (CLAVE)
-    // -----------------------------
+    // radio principal
     let nearby = stationsWithDistance.filter(st => st.distance <= 150);
 
-    // fallback si no hay cercanas
+    // fallback
     if (nearby.length === 0) {
-      nearby = stationsWithDistance.sort((a, b) => a.distance - b.distance).slice(0, 5);
+      nearby = stationsWithDistance
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 5);
     }
 
-    // -----------------------------
-    // SCORING
-    // -----------------------------
     let bestStation = null;
     let bestScore = Infinity;
 
     for (const st of nearby) {
       let score = 0;
 
-      // 1. distancia (peso fuerte)
+      // distancia
       score += st.distance * 0.1;
 
-      // 2. match por nombre (BONUS)
+      // match por ciudad
       if (normalizedCity && st.name?.toLowerCase().includes(normalizedCity)) {
         score -= 10;
       }
 
-      // 3. coherencia con modelos
+      // coherencia
       if (modelAvg != null) {
         score += Math.abs(st.temp - modelAvg) * 2;
       }
 
-      // 4. penalizar datos viejos
+      // datos viejos
       const now = Date.now() / 1000;
       if (st.updated && now - st.updated > 10800) {
         score += 5;
@@ -157,7 +173,7 @@ export default async function handler(req, res) {
         },
         weatherbit: {
           temp: wbTemp,
-          desc: wbData?.data?.[0]?.weather?.description ?? ""
+          desc: wbDesc
         },
         smn: {
           temp: smnTemp,
