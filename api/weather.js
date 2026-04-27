@@ -61,9 +61,11 @@ export default async function handler(req, res) {
           desc: wbData.data?.[0]?.weather?.description
         },
         smn: {
-          temp: smnTemp
-		  desc: "SMN estación elegida: ", closestStation?.name;
-        }
+		  temp: smnTemp,
+		  desc: closestStation
+			? `SMN estación: ${closestStation.name}`
+			: "Sin datos SMN"
+		}
       }
     };
 
