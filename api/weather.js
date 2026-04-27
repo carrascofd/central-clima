@@ -5,74 +5,109 @@ export default async function handler(req, res) {
   const WEATHERBIT_KEY = process.env.WEATHERBIT_KEY;
 
   try {
-    // OpenWeather
+    // -----------------------------
+    // 1. OpenWeather
+    // -----------------------------
     const owRes = await fetch(
       `https://api.openweathermap.org/data/2.5/weather?q=${city},AR&units=metric&appid=${OPENWEATHER_KEY}`
     );
+
+    if (!owRes.ok) {
+      throw new Error("Error en OpenWeather");
+    }
+
     const owData = await owRes.json();
 
-    // Weatherbit
+    const lat = owData.coord?.lat;
+    const lon = owData.coord?.lon;
+
+    // -----------------------------
+    // 2. Weatherbit
+    // -----------------------------
     const wbRes = await fetch(
       `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`
     );
-    const wbData = await wbRes.json();
 
-    // SMN (ejemplo simple - estaciones)
+    const wbData = wbRes.ok ? await wbRes.json() : null;
+
+    // -----------------------------
+    // 3. SMN
+    // -----------------------------
     const smnRes = await fetch(
       `https://ws.smn.gob.ar/map_items/weather`
     );
-    const smnData = await smnRes.json();
-	
-	const lat = owData.coord?.lat;
-	const lon = owData.coord?.lon;
-	
-	function getDistance(lat1, lon1, lat2, lon2) {
-	  const dLat = lat1 - lat2;
-	  const dLon = lon1 - lon2;
-	  return Math.sqrt(dLat * dLat + dLon * dLon);
-	}
 
-    // Buscar estación cercana
+    const smnData = smnRes.ok ? await smnRes.json() : [];
+
+    // -----------------------------
+    // Función distancia
+    // -----------------------------
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const dLat = lat1 - lat2;
+      const dLon = lon1 - lon2;
+      return Math.sqrt(dLat * dLat + dLon * dLon);
+    }
+
+    // -----------------------------
+    // Buscar estación más cercana
+    // -----------------------------
     let closestStation = null;
-	let minDistance = Infinity;
+    let minDistance = Infinity;
 
-	for (const station of smnData) {
-	  if (!station.lat || !station.lon || !station.temperature) continue;
+    for (const station of smnData) {
+      const temp = station.temperature ?? station.temp;
 
-	  const distance = getDistance(lat, lon, station.lat, station.lon);
+      if (
+        station.lat == null ||
+        station.lon == null ||
+        temp == null
+      ) continue;
 
-	  if (distance < minDistance) {
-		minDistance = distance;
-		closestStation = station;
-	  }
-	}
+      const distance = getDistance(lat, lon, station.lat, station.lon);
 
-	const smnTemp = closestStation?.temperature;
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestStation = {
+          ...station,
+          temp
+        };
+      }
+    }
 
+    const smnTemp = closestStation?.temp ?? null;
+
+    console.log("SMN estación elegida:", closestStation?.name);
+
+    // -----------------------------
+    // Resultado final
+    // -----------------------------
     const result = {
       city,
       sources: {
         openweather: {
-          temp: owData.main?.temp,
-          desc: owData.weather?.[0]?.description
+          temp: owData.main?.temp ?? null,
+          desc: owData.weather?.[0]?.description ?? ""
         },
         weatherbit: {
-          temp: wbData.data?.[0]?.temp,
-          desc: wbData.data?.[0]?.weather?.description
+          temp: wbData?.data?.[0]?.temp ?? null,
+          desc: wbData?.data?.[0]?.weather?.description ?? ""
         },
         smn: {
-		  temp: smnTemp,
-		  desc: closestStation
-			? `SMN estación: ${closestStation.name}`
-			: "Sin datos SMN"
-		}
+          temp: smnTemp,
+          desc: closestStation
+            ? `SMN estación: ${closestStation.name}`
+            : "Sin datos SMN",
+          distance: minDistance !== Infinity ? minDistance : null
+        }
       }
     };
 
+    // -----------------------------
     // Promedio
+    // -----------------------------
     const temps = Object.values(result.sources)
       .map(s => s.temp)
-      .filter(t => t !== undefined);
+      .filter(t => t != null);
 
     result.average = temps.length
       ? (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)
@@ -81,6 +116,11 @@ export default async function handler(req, res) {
     res.status(200).json(result);
 
   } catch (error) {
-    res.status(500).json({ error: "Error obteniendo datos" });
+    console.error("ERROR:", error);
+
+    res.status(500).json({
+      error: "Error obteniendo datos",
+      detail: error.message
+    });
   }
 }
