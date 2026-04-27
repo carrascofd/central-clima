@@ -25,9 +25,10 @@ export default async function handler(req, res) {
     }
 
     const owData = await owRes.json();
-
+/*
     const lat = owData.coord?.lat;
     const lon = owData.coord?.lon;
+*/
 
     // -----------------------------
     // 2. Weatherbit
@@ -51,6 +52,8 @@ export default async function handler(req, res) {
       `https://ws.smn.gob.ar/map_items/weather`
     );
 
+	const baseLat = latQuery ? parseFloat(latQuery) : owData.coord?.lat;
+	const baseLon = lonQuery ? parseFloat(lonQuery) : owData.coord?.lon;
     const smnData = smnRes.ok ? await smnRes.json() : [];
 
     // -----------------------------
@@ -83,7 +86,16 @@ export default async function handler(req, res) {
 		temp == null
 	  ) continue;
 
-	  const distance = getDistance(lat, lon, stLat, stLon);
+	  const updated = station.updated; // timestamp
+	  const now = Date.now() / 1000;
+
+	  // descartar datos viejos (> 3 horas)
+	  if (now - updated > 10800) continue;
+
+	  const distance = getDistance(baseLat, baseLon, stLat, stLon);
+	  const distanceKm = distance * 111;
+
+	  if (distanceKm > 100) continue; // descarta estaciones lejanas
 
 	  if (distance < minDistance) {
 		minDistance = distance;
@@ -96,8 +108,11 @@ export default async function handler(req, res) {
 
 	const smnTemp = closestStation?.temp ?? null;
 
-    console.log("SMN estación elegida:", closestStation?.name);
-	console.log("SMN SAMPLE:", smnData.slice(0, 3));
+    const stationDesc = closestStation
+	  ? `${closestStation.name} - ${closestStation.province}
+		 | Viento: ${closestStation.weather?.wind_speed ?? "-"} km/h
+		 | Humedad: ${closestStation.weather?.humidity ?? "-"}%`
+	  : "Sin datos SMN";
 
     // -----------------------------
     // Resultado final
@@ -114,12 +129,10 @@ export default async function handler(req, res) {
           desc: wbData?.data?.[0]?.weather?.description ?? ""
         },
         smn: {
-          temp: smnTemp,
-          desc: closestStation
-            ? `SMN estación: ${closestStation.name}`
-            : "Sin datos SMN",
-          distance: minDistance !== Infinity ? minDistance : null
-        }
+		  temp: smnTemp,
+		  desc: stationDesc,
+		  distance: minDistance !== Infinity ? minDistance * 111 : null
+		}
       }
     };
 	
@@ -212,6 +225,12 @@ export default async function handler(req, res) {
 	// -----------------------------
 	if (consensus != null) {
 	  consensus = Number(consensus.toFixed(1));
+	}
+	
+	if (smn != null && consensus != null) {
+	  if (Math.abs(smn - consensus) > 5 && !note.includes("SMN")) {
+		note += " | SMN inconsistente";
+	  }
 	}
 
 	// -----------------------------
