@@ -79,6 +79,7 @@ export default async function handler(req, res) {
     const smnTemp = closestStation?.temp ?? null;
 
     console.log("SMN estación elegida:", closestStation?.name);
+	console.log("SMN SAMPLE:", smnData.slice(0, 3));
 
     // -----------------------------
     // Resultado final
