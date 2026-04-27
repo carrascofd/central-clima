@@ -52,31 +52,35 @@ export default async function handler(req, res) {
     // Buscar estación más cercana
     // -----------------------------
     let closestStation = null;
-    let minDistance = Infinity;
+	let minDistance = Infinity;
 
-    for (const station of smnData) {
-      const stLat = station.lat ?? station.latitud;
-	  const stLon = station.lon ?? station.longitud;
-	  const temp = station.temperature ?? station.temp;
+	for (const station of smnData) {
+	  const stLat = parseFloat(station.lat ?? station.latitud);
+	  const stLon = parseFloat(station.lon ?? station.longitud);
+
+	  const temp =
+		station.weather?.temp ??
+		station.temperature ??
+		station.temp;
 
 	  if (
-		stLat == null ||
-		stLon == null ||
+		isNaN(stLat) ||
+		isNaN(stLon) ||
 		temp == null
 	  ) continue;
 
 	  const distance = getDistance(lat, lon, stLat, stLon);
 
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestStation = {
-          ...station,
-          temp
-        };
-      }
-    }
+	  if (distance < minDistance) {
+		minDistance = distance;
+		closestStation = {
+		  ...station,
+		  temp
+		};
+	  }
+	}
 
-    const smnTemp = closestStation?.temp ?? null;
+	const smnTemp = closestStation?.temp ?? null;
 
     console.log("SMN estación elegida:", closestStation?.name);
 	console.log("SMN SAMPLE:", smnData.slice(0, 3));
