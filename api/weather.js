@@ -34,52 +34,35 @@ export default async function handler(req, res) {
     const owTemp = owData.main?.temp ?? null;
 
     // -----------------------------
-	// 2. Weatherbit (FIX REAL)
-	// -----------------------------
-	let wbTemp = null;
-	let wbDesc = "";
+    // 2. Weatherbit (VERSIÓN ESTABLE)
+    // -----------------------------
+    let wbTemp = null;
+    let wbDesc = "";
 
-	try {
-	  let wbUrl;
+    try {
+      // 👉 PRIMERO: por ciudad (como antes)
+      let wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
 
-	  if (latQuery && lonQuery) {
-		wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${latQuery}&lon=${lonQuery}&key=${WEATHERBIT_KEY}`;
-	  } else {
-		wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
-	  }
+      let wbRes = await fetch(wbUrl);
+      let wbData = wbRes.ok ? await wbRes.json() : null;
 
-	  let wbRes = await fetch(wbUrl);
-	  let wbData = null;
+      // 👉 SI FALLA: fallback a coords
+      if (!wbData?.data?.[0] && baseLat && baseLon) {
+        wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${baseLat}&lon=${baseLon}&key=${WEATHERBIT_KEY}`;
+        wbRes = await fetch(wbUrl);
+        wbData = wbRes.ok ? await wbRes.json() : null;
+      }
 
-	  if (wbRes.ok) {
-		wbData = await wbRes.json();
-	  }
+      if (wbData?.data?.[0]) {
+        wbTemp = wbData.data[0].temp ?? null;
+        wbDesc = wbData.data[0].weather?.description ?? "";
+      } else {
+        console.error("Weatherbit sin datos:", wbData);
+      }
 
-	  // 🔥 VALIDACIÓN REAL (CLAVE)
-	  if (!wbData || !wbData.data || !wbData.data[0]) {
-		console.warn("Weatherbit inválido, intentando fallback a coords");
-
-		if (owData.coord) {
-		  const fallbackUrl = `https://api.weatherbit.io/v2.0/current?lat=${owData.coord.lat}&lon=${owData.coord.lon}&key=${WEATHERBIT_KEY}`;
-		  const fallbackRes = await fetch(fallbackUrl);
-
-		  if (fallbackRes.ok) {
-			wbData = await fallbackRes.json();
-		  }
-		}
-	  }
-
-	  // 🔥 VALIDACIÓN FINAL
-	  if (wbData && wbData.data && wbData.data[0]) {
-		wbTemp = wbData.data[0].temp ?? null;
-		wbDesc = wbData.data[0].weather?.description ?? "";
-	  } else {
-		console.error("Weatherbit sin datos válidos:", wbData);
-	  }
-
-	} catch (err) {
-	  console.error("Weatherbit exception:", err);
-	}
+    } catch (err) {
+      console.error("Weatherbit error:", err);
+    }
 
     // -----------------------------
     // 3. SMN (SELECCIÓN EQUILIBRADA)
