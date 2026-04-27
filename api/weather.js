@@ -34,10 +34,6 @@ export default async function handler(req, res) {
       ? parseFloat(lonQuery)
       : owData.coord?.lon;
 
-    if (baseLat == null || baseLon == null) {
-      console.warn("Sin coordenadas base → SMN funcionará en modo fallback");
-    }
-
     // -----------------------------
     // 2. Weatherbit
     // -----------------------------
@@ -64,37 +60,76 @@ export default async function handler(req, res) {
       return Math.sqrt(dLat * dLat + dLon * dLon);
     }
 
+    const normalizedCity = city?.toLowerCase().trim();
+
     let closestStation = null;
     let minDistance = Infinity;
 
-    for (const station of smnData) {
-      const stLat = parseFloat(station.lat);
-      const stLon = parseFloat(station.lon);
+    // -----------------------------
+    // 3.1 PRIORIDAD 1: MATCH EXACTO
+    // -----------------------------
+    let exactMatch = smnData.find(s =>
+      s.name?.toLowerCase().trim() === normalizedCity
+    );
+
+    // -----------------------------
+    // 3.2 PRIORIDAD 2: MATCH PARCIAL
+    // -----------------------------
+    let partialMatch = smnData.find(s =>
+      s.name?.toLowerCase().includes(normalizedCity)
+    );
+
+    if (exactMatch || partialMatch) {
+      const station = exactMatch || partialMatch;
 
       const temp =
         station.weather?.temp ??
         station.temperature ??
         station.temp;
 
-      if (
-        isNaN(stLat) ||
-        isNaN(stLon) ||
-        temp == null
-      ) continue;
+      closestStation = {
+        ...station,
+        temp
+      };
 
-      let distance = Infinity;
+      console.log("SMN por nombre:", station.name);
+    }
 
-      if (baseLat != null && baseLon != null) {
-        distance = getDistance(baseLat, baseLon, stLat, stLon);
+    // -----------------------------
+    // 3.3 FALLBACK: DISTANCIA
+    // -----------------------------
+    if (!closestStation) {
+      for (const station of smnData) {
+        const stLat = parseFloat(station.lat);
+        const stLon = parseFloat(station.lon);
+
+        const temp =
+          station.weather?.temp ??
+          station.temperature ??
+          station.temp;
+
+        if (
+          isNaN(stLat) ||
+          isNaN(stLon) ||
+          temp == null
+        ) continue;
+
+        let distance = Infinity;
+
+        if (baseLat != null && baseLon != null) {
+          distance = getDistance(baseLat, baseLon, stLat, stLon);
+        }
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestStation = {
+            ...station,
+            temp
+          };
+        }
       }
 
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestStation = {
-          ...station,
-          temp
-        };
-      }
+      console.log("SMN por distancia:", closestStation?.name);
     }
 
     const smnTemp = closestStation?.temp ?? null;
@@ -108,8 +143,6 @@ export default async function handler(req, res) {
          | 💧 ${closestStation.weather?.humidity ?? "-"}%
          ${distanceKm ? `| 📍 ${distanceKm} km` : ""}`
       : "Sin datos SMN";
-
-    console.log("SMN elegida:", closestStation?.name, smnTemp);
 
     // -----------------------------
     // Resultado base
@@ -160,7 +193,6 @@ export default async function handler(req, res) {
     let confidence = "baja";
     let note = "";
 
-    // Base (modelos)
     if (ow != null && wb != null) {
       const d = diff(ow, wb);
 
@@ -178,7 +210,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // SMN (dato real)
     if (smn != null && consensus != null) {
       const d = diff(consensus, smn);
       const close = !isNaN(smnDistance) && smnDistance < 100;
