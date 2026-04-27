@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const city = req.query.city || "San Luis";
+  const city = req.query.city;
   const latQuery = req.query.lat;
   const lonQuery = req.query.lon;
 
@@ -23,44 +23,38 @@ export default async function handler(req, res) {
 
     const owData = await owRes.json();
 
-    const baseLat = latQuery ? parseFloat(latQuery) : owData.coord?.lat;
-    const baseLon = lonQuery ? parseFloat(lonQuery) : owData.coord?.lon;
+    const baseLat = latQuery
+      ? parseFloat(latQuery)
+      : owData.coord?.lat;
 
-    const owTemp = owData.main?.temp ?? null;
+    const baseLon = lonQuery
+      ? parseFloat(lonQuery)
+      : owData.coord?.lon;
 
     // -----------------------------
-    // 2. Weatherbit (VERSIÓN ESTABLE)
+    // 2. Weatherbit
     // -----------------------------
-    let wbTemp = null;
-    let wbDesc = "";
+    let wbUrl;
 
-    try {
-      // 👉 PRIMERO: por ciudad (como antes)
-      let wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
-
-      let wbRes = await fetch(wbUrl);
-      let wbData = wbRes.ok ? await wbRes.json() : null;
-
-      // 👉 SI FALLA: fallback a coords
-      if (!wbData?.data?.[0] && baseLat && baseLon) {
-        wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${baseLat}&lon=${baseLon}&key=${WEATHERBIT_KEY}`;
-        wbRes = await fetch(wbUrl);
-        wbData = wbRes.ok ? await wbRes.json() : null;
-      }
-
-      if (wbData?.data?.[0]) {
-        wbTemp = wbData.data[0].temp ?? null;
-        wbDesc = wbData.data[0].weather?.description ?? "";
-      } else {
-        console.error("Weatherbit sin datos:", wbData);
-      }
-
-    } catch (err) {
-      console.error("Weatherbit error:", err);
+    if (latQuery && lonQuery) {
+      wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${latQuery}&lon=${lonQuery}&key=${WEATHERBIT_KEY}`;
+    } else {
+      wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
     }
 
+    const wbRes = await fetch(wbUrl);
+    const wbData = wbRes.ok ? await wbRes.json() : null;
+
+    const owTemp = owData.main?.temp ?? null;
+    const wbTemp = wbData?.data?.[0]?.temp ?? null;
+
+    const modelAvg =
+      owTemp != null && wbTemp != null
+        ? (owTemp + wbTemp) / 2
+        : owTemp ?? wbTemp ?? null;
+
     // -----------------------------
-    // 3. SMN (SIMPLIFICADO Y ESTABLE)
+    // 3. SMN (SELECCIÓN CORREGIDA)
     // -----------------------------
     const smnRes = await fetch(`https://ws.smn.gob.ar/map_items/weather`);
     const smnData = smnRes.ok ? await smnRes.json() : [];
@@ -71,34 +65,85 @@ export default async function handler(req, res) {
       return Math.sqrt(dLat * dLat + dLon * dLon) * 111;
     }
 
-    let closestStation = null;
-    let minDistance = Infinity;
+    const normalizedCity = city?.toLowerCase()?.trim();
 
-    for (const st of smnData) {
-      const lat = parseFloat(st.lat);
-      const lon = parseFloat(st.lon);
-      const temp = st.weather?.temp ?? st.temperature ?? st.temp;
+    // construir estaciones válidas
+    const stations = smnData
+      .map(st => ({
+        ...st,
+        lat: parseFloat(st.lat),
+        lon: parseFloat(st.lon),
+        temp: st.weather?.temp ?? st.temperature ?? st.temp
+      }))
+      .filter(st =>
+        !isNaN(st.lat) &&
+        !isNaN(st.lon) &&
+        st.temp != null
+      );
 
-      if (isNaN(lat) || isNaN(lon) || temp == null) continue;
+    // calcular distancia
+    const stationsWithDistance = stations.map(st => ({
+      ...st,
+      distance:
+        baseLat != null && baseLon != null
+          ? getDistanceKm(baseLat, baseLon, st.lat, st.lon)
+          : Infinity
+    }));
 
-      const dist =
-        baseLat && baseLon
-          ? getDistanceKm(baseLat, baseLon, lat, lon)
-          : Infinity;
+    // -----------------------------
+    // FILTRO POR RADIO (CLAVE)
+    // -----------------------------
+    let nearby = stationsWithDistance.filter(st => st.distance <= 150);
 
-      if (dist < minDistance) {
-        minDistance = dist;
-        closestStation = { ...st, temp, distance: dist };
+    // fallback si no hay cercanas
+    if (nearby.length === 0) {
+      nearby = stationsWithDistance.sort((a, b) => a.distance - b.distance).slice(0, 5);
+    }
+
+    // -----------------------------
+    // SCORING
+    // -----------------------------
+    let bestStation = null;
+    let bestScore = Infinity;
+
+    for (const st of nearby) {
+      let score = 0;
+
+      // 1. distancia (peso fuerte)
+      score += st.distance * 0.1;
+
+      // 2. match por nombre (BONUS)
+      if (normalizedCity && st.name?.toLowerCase().includes(normalizedCity)) {
+        score -= 10;
+      }
+
+      // 3. coherencia con modelos
+      if (modelAvg != null) {
+        score += Math.abs(st.temp - modelAvg) * 2;
+      }
+
+      // 4. penalizar datos viejos
+      const now = Date.now() / 1000;
+      if (st.updated && now - st.updated > 10800) {
+        score += 5;
+      }
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestStation = st;
       }
     }
 
-    const smnTemp = closestStation?.temp ?? null;
+    const smnTemp = bestStation?.temp ?? null;
 
-    const stationDesc = closestStation
-      ? `${closestStation.name} - ${closestStation.province}
-         | 💧 ${closestStation.weather?.humidity ?? "-"}%
-         | 📍 ${closestStation.distance?.toFixed(1)} km`
+    const stationDesc = bestStation
+      ? `${bestStation.name} - ${bestStation.province}
+         | 🌬 ${bestStation.weather?.wind_speed ?? "-"} km/h
+         | 💧 ${bestStation.weather?.humidity ?? "-"}%
+         | 📍 ${bestStation.distance?.toFixed(1)} km`
       : "Sin datos SMN";
+
+    console.log("SMN FINAL:", bestStation?.name, smnTemp);
 
     // -----------------------------
     // RESULTADO
@@ -112,7 +157,7 @@ export default async function handler(req, res) {
         },
         weatherbit: {
           temp: wbTemp,
-          desc: wbDesc
+          desc: wbData?.data?.[0]?.weather?.description ?? ""
         },
         smn: {
           temp: smnTemp,
