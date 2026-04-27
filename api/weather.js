@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     const owData = await owRes.json();
 
     // -----------------------------
-    // Coordenadas base (CLAVE)
+    // Coordenadas base
     // -----------------------------
     const baseLat = latQuery
       ? parseFloat(latQuery)
@@ -34,9 +34,8 @@ export default async function handler(req, res) {
       ? parseFloat(lonQuery)
       : owData.coord?.lon;
 
-    // fallback defensivo
-    if (!baseLat || !baseLon) {
-      console.warn("No hay coordenadas base válidas");
+    if (baseLat == null || baseLon == null) {
+      console.warn("Sin coordenadas base → SMN funcionará en modo fallback");
     }
 
     // -----------------------------
@@ -80,22 +79,14 @@ export default async function handler(req, res) {
       if (
         isNaN(stLat) ||
         isNaN(stLon) ||
-        temp == null ||
-        baseLat == null ||
-        baseLon == null
+        temp == null
       ) continue;
 
-      // filtro de tiempo (seguro)
-      const updated = station.updated;
-      const now = Date.now() / 1000;
+      let distance = Infinity;
 
-      if (updated && (now - updated > 10800)) continue;
-
-      const distance = getDistance(baseLat, baseLon, stLat, stLon);
-      const distanceKm = distance * 111;
-
-      // ⚠️ relajamos filtro (antes 100 km)
-      if (distanceKm > 300) continue;
+      if (baseLat != null && baseLon != null) {
+        distance = getDistance(baseLat, baseLon, stLat, stLon);
+      }
 
       if (distance < minDistance) {
         minDistance = distance;
@@ -108,11 +99,17 @@ export default async function handler(req, res) {
 
     const smnTemp = closestStation?.temp ?? null;
 
+    const distanceKm =
+      minDistance !== Infinity ? (minDistance * 111).toFixed(1) : null;
+
     const stationDesc = closestStation
       ? `${closestStation.name} - ${closestStation.province}
-         | Viento: ${closestStation.weather?.wind_speed ?? "-"} km/h
-         | Humedad: ${closestStation.weather?.humidity ?? "-"}%`
+         | 🌬 ${closestStation.weather?.wind_speed ?? "-"} km/h
+         | 💧 ${closestStation.weather?.humidity ?? "-"}%
+         ${distanceKm ? `| 📍 ${distanceKm} km` : ""}`
       : "Sin datos SMN";
+
+    console.log("SMN elegida:", closestStation?.name, smnTemp);
 
     // -----------------------------
     // Resultado base
@@ -131,7 +128,7 @@ export default async function handler(req, res) {
         smn: {
           temp: smnTemp,
           desc: stationDesc,
-          distance: minDistance !== Infinity ? minDistance * 111 : null
+          distance: distanceKm
         }
       }
     };
@@ -153,7 +150,7 @@ export default async function handler(req, res) {
     const ow = result.sources.openweather.temp;
     const wb = result.sources.weatherbit.temp;
     const smn = result.sources.smn.temp;
-    const smnDistance = result.sources.smn.distance;
+    const smnDistance = parseFloat(result.sources.smn.distance);
 
     function diff(a, b) {
       return Math.abs(a - b);
@@ -163,6 +160,7 @@ export default async function handler(req, res) {
     let confidence = "baja";
     let note = "";
 
+    // Base (modelos)
     if (ow != null && wb != null) {
       const d = diff(ow, wb);
 
@@ -180,19 +178,20 @@ export default async function handler(req, res) {
       }
     }
 
+    // SMN (dato real)
     if (smn != null && consensus != null) {
       const d = diff(consensus, smn);
-      const close = smnDistance != null && smnDistance < 100;
+      const close = !isNaN(smnDistance) && smnDistance < 100;
 
       if (close && d <= 2) {
         consensus = (consensus + smn) / 2;
         confidence = "alta";
-        note = "SMN alineado";
+        note = "SMN alineado con modelos";
       } else if (close && d <= 5) {
         confidence = "media";
         note = "SMN cercano con diferencia";
       } else {
-        note = "SMN descartado";
+        note = "SMN descartado (lejos o inconsistente)";
       }
     }
 
