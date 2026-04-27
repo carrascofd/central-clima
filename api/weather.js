@@ -24,17 +24,6 @@ export default async function handler(req, res) {
     const owData = await owRes.json();
 
     // -----------------------------
-    // Coordenadas base
-    // -----------------------------
-    const baseLat = latQuery
-      ? parseFloat(latQuery)
-      : owData.coord?.lat;
-
-    const baseLon = lonQuery
-      ? parseFloat(lonQuery)
-      : owData.coord?.lon;
-
-    // -----------------------------
     // 2. Weatherbit
     // -----------------------------
     let wbUrl;
@@ -49,100 +38,89 @@ export default async function handler(req, res) {
     const wbData = wbRes.ok ? await wbRes.json() : null;
 
     // -----------------------------
-    // 3. SMN
+    // 3. SMN (SELECCIÓN INTELIGENTE)
     // -----------------------------
     const smnRes = await fetch(`https://ws.smn.gob.ar/map_items/weather`);
     const smnData = smnRes.ok ? await smnRes.json() : [];
 
-    function getDistance(lat1, lon1, lat2, lon2) {
-      const dLat = lat1 - lat2;
-      const dLon = lon1 - lon2;
-      return Math.sqrt(dLat * dLat + dLon * dLon);
+    const owTemp = owData.main?.temp ?? null;
+    const wbTemp = wbData?.data?.[0]?.temp ?? null;
+
+    // promedio base de modelos
+    let modelAvg = null;
+    if (owTemp != null && wbTemp != null) {
+      modelAvg = (owTemp + wbTemp) / 2;
+    } else {
+      modelAvg = owTemp ?? wbTemp ?? null;
     }
 
     const normalizedCity = city?.toLowerCase().trim();
 
-    let closestStation = null;
-    let minDistance = Infinity;
-
     // -----------------------------
-    // 3.1 PRIORIDAD 1: MATCH EXACTO
+    // candidatos por ciudad
     // -----------------------------
-    let exactMatch = smnData.find(s =>
-      s.name?.toLowerCase().trim() === normalizedCity
-    );
+    let candidates = smnData
+      .map(st => ({
+        ...st,
+        temp: st.weather?.temp ?? st.temperature ?? st.temp
+      }))
+      .filter(st =>
+        st.temp != null &&
+        st.name &&
+        normalizedCity &&
+        st.name.toLowerCase().includes(normalizedCity)
+      );
 
-    // -----------------------------
-    // 3.2 PRIORIDAD 2: MATCH PARCIAL
-    // -----------------------------
-    let partialMatch = smnData.find(s =>
-      s.name?.toLowerCase().includes(normalizedCity)
-    );
-
-    if (exactMatch || partialMatch) {
-      const station = exactMatch || partialMatch;
-
-      const temp =
-        station.weather?.temp ??
-        station.temperature ??
-        station.temp;
-
-      closestStation = {
-        ...station,
-        temp
-      };
-
-      console.log("SMN por nombre:", station.name);
+    // fallback: usar todas
+    if (candidates.length === 0) {
+      candidates = smnData
+        .map(st => ({
+          ...st,
+          temp: st.weather?.temp ?? st.temperature ?? st.temp
+        }))
+        .filter(st => st.temp != null);
     }
 
     // -----------------------------
-    // 3.3 FALLBACK: DISTANCIA
+    // scoring inteligente
     // -----------------------------
-    if (!closestStation) {
-      for (const station of smnData) {
-        const stLat = parseFloat(station.lat);
-        const stLon = parseFloat(station.lon);
+    let bestStation = null;
+    let bestScore = Infinity;
 
-        const temp =
-          station.weather?.temp ??
-          station.temperature ??
-          station.temp;
+    for (const st of candidates) {
+      let score = 0;
 
-        if (
-          isNaN(stLat) ||
-          isNaN(stLon) ||
-          temp == null
-        ) continue;
-
-        let distance = Infinity;
-
-        if (baseLat != null && baseLon != null) {
-          distance = getDistance(baseLat, baseLon, stLat, stLon);
-        }
-
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestStation = {
-            ...station,
-            temp
-          };
-        }
+      // 1. diferencia contra modelos (peso fuerte)
+      if (modelAvg != null) {
+        score += Math.abs(st.temp - modelAvg) * 2;
       }
 
-      console.log("SMN por distancia:", closestStation?.name);
+      // 2. penalizar estaciones automáticas
+      if (st.name?.toLowerCase().includes("auto")) {
+        score += 2;
+      }
+
+      // 3. penalizar datos viejos
+      const now = Date.now() / 1000;
+      if (st.updated && (now - st.updated > 10800)) {
+        score += 5;
+      }
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestStation = st;
+      }
     }
 
-    const smnTemp = closestStation?.temp ?? null;
+    const smnTemp = bestStation?.temp ?? null;
 
-    const distanceKm =
-      minDistance !== Infinity ? (minDistance * 111).toFixed(1) : null;
-
-    const stationDesc = closestStation
-      ? `${closestStation.name} - ${closestStation.province}
-         | 🌬 ${closestStation.weather?.wind_speed ?? "-"} km/h
-         | 💧 ${closestStation.weather?.humidity ?? "-"}%
-         ${distanceKm ? `| 📍 ${distanceKm} km` : ""}`
+    const stationDesc = bestStation
+      ? `${bestStation.name} - ${bestStation.province}
+         | 🌬 ${bestStation.weather?.wind_speed ?? "-"} km/h
+         | 💧 ${bestStation.weather?.humidity ?? "-"}%`
       : "Sin datos SMN";
+
+    console.log("SMN elegida:", bestStation?.name, smnTemp);
 
     // -----------------------------
     // Resultado base
@@ -151,17 +129,16 @@ export default async function handler(req, res) {
       city,
       sources: {
         openweather: {
-          temp: owData.main?.temp ?? null,
+          temp: owTemp,
           desc: owData.weather?.[0]?.description ?? ""
         },
         weatherbit: {
-          temp: wbData?.data?.[0]?.temp ?? null,
+          temp: wbTemp,
           desc: wbData?.data?.[0]?.weather?.description ?? ""
         },
         smn: {
           temp: smnTemp,
-          desc: stationDesc,
-          distance: distanceKm
+          desc: stationDesc
         }
       }
     };
@@ -180,11 +157,6 @@ export default async function handler(req, res) {
     // -----------------------------
     // CONSENSO INTELIGENTE
     // -----------------------------
-    const ow = result.sources.openweather.temp;
-    const wb = result.sources.weatherbit.temp;
-    const smn = result.sources.smn.temp;
-    const smnDistance = parseFloat(result.sources.smn.distance);
-
     function diff(a, b) {
       return Math.abs(a - b);
     }
@@ -193,36 +165,35 @@ export default async function handler(req, res) {
     let confidence = "baja";
     let note = "";
 
-    if (ow != null && wb != null) {
-      const d = diff(ow, wb);
+    if (owTemp != null && wbTemp != null) {
+      const d = diff(owTemp, wbTemp);
 
       if (d <= 2) {
-        consensus = (ow + wb) / 2;
+        consensus = (owTemp + wbTemp) / 2;
         confidence = "alta";
       } else if (d <= 4) {
-        consensus = (ow + wb) / 2;
+        consensus = (owTemp + wbTemp) / 2;
         confidence = "media";
         note = "Diferencia moderada entre modelos";
       } else {
-        consensus = ow;
+        consensus = owTemp;
         confidence = "baja";
         note = "Alta discrepancia entre modelos";
       }
     }
 
-    if (smn != null && consensus != null) {
-      const d = diff(consensus, smn);
-      const close = !isNaN(smnDistance) && smnDistance < 100;
+    if (smnTemp != null && consensus != null) {
+      const d = diff(consensus, smnTemp);
 
-      if (close && d <= 2) {
-        consensus = (consensus + smn) / 2;
+      if (d <= 2) {
+        consensus = (consensus + smnTemp) / 2;
         confidence = "alta";
         note = "SMN alineado con modelos";
-      } else if (close && d <= 5) {
+      } else if (d <= 5) {
         confidence = "media";
         note = "SMN cercano con diferencia";
       } else {
-        note = "SMN descartado (lejos o inconsistente)";
+        note = "SMN descartado por inconsistencia";
       }
     }
 
