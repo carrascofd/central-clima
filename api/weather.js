@@ -162,7 +162,7 @@ export default async function handler(req, res) {
     console.log("SMN FINAL:", bestStation?.name, smnTemp);
 
     // -----------------------------
-    // RESULTADO
+    // RESULTADOs
     // -----------------------------
     const result = {
       city,
