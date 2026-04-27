@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const city = req.query.city;
+  const city = req.query.city || "San Luis";
   const latQuery = req.query.lat;
   const lonQuery = req.query.lon;
 
@@ -23,13 +23,8 @@ export default async function handler(req, res) {
 
     const owData = await owRes.json();
 
-    const baseLat = latQuery
-      ? parseFloat(latQuery)
-      : owData.coord?.lat;
-
-    const baseLon = lonQuery
-      ? parseFloat(lonQuery)
-      : owData.coord?.lon;
+    const baseLat = latQuery ? parseFloat(latQuery) : owData.coord?.lat;
+    const baseLon = lonQuery ? parseFloat(lonQuery) : owData.coord?.lon;
 
     const owTemp = owData.main?.temp ?? null;
 
@@ -65,7 +60,7 @@ export default async function handler(req, res) {
     }
 
     // -----------------------------
-    // 3. SMN (SELECCIÓN EQUILIBRADA)
+    // 3. SMN (SIMPLIFICADO Y ESTABLE)
     // -----------------------------
     const smnRes = await fetch(`https://ws.smn.gob.ar/map_items/weather`);
     const smnData = smnRes.ok ? await smnRes.json() : [];
@@ -76,88 +71,37 @@ export default async function handler(req, res) {
       return Math.sqrt(dLat * dLat + dLon * dLon) * 111;
     }
 
-    const modelAvg =
-      owTemp != null && wbTemp != null
-        ? (owTemp + wbTemp) / 2
-        : owTemp ?? wbTemp ?? null;
+    let closestStation = null;
+    let minDistance = Infinity;
 
-    const normalizedCity = city?.toLowerCase()?.trim();
+    for (const st of smnData) {
+      const lat = parseFloat(st.lat);
+      const lon = parseFloat(st.lon);
+      const temp = st.weather?.temp ?? st.temperature ?? st.temp;
 
-    const stations = smnData
-      .map(st => ({
-        ...st,
-        lat: parseFloat(st.lat),
-        lon: parseFloat(st.lon),
-        temp: st.weather?.temp ?? st.temperature ?? st.temp
-      }))
-      .filter(st =>
-        !isNaN(st.lat) &&
-        !isNaN(st.lon) &&
-        st.temp != null
-      );
+      if (isNaN(lat) || isNaN(lon) || temp == null) continue;
 
-    const stationsWithDistance = stations.map(st => ({
-      ...st,
-      distance:
-        baseLat != null && baseLon != null
-          ? getDistanceKm(baseLat, baseLon, st.lat, st.lon)
-          : Infinity
-    }));
+      const dist =
+        baseLat && baseLon
+          ? getDistanceKm(baseLat, baseLon, lat, lon)
+          : Infinity;
 
-    // radio principal
-    let nearby = stationsWithDistance.filter(st => st.distance <= 150);
-
-    // fallback
-    if (nearby.length === 0) {
-      nearby = stationsWithDistance
-        .sort((a, b) => a.distance - b.distance)
-        .slice(0, 5);
-    }
-
-    let bestStation = null;
-    let bestScore = Infinity;
-
-    for (const st of nearby) {
-      let score = 0;
-
-      // distancia
-      score += st.distance * 0.1;
-
-      // match por ciudad
-      if (normalizedCity && st.name?.toLowerCase().includes(normalizedCity)) {
-        score -= 10;
-      }
-
-      // coherencia
-      if (modelAvg != null) {
-        score += Math.abs(st.temp - modelAvg) * 2;
-      }
-
-      // datos viejos
-      const now = Date.now() / 1000;
-      if (st.updated && now - st.updated > 10800) {
-        score += 5;
-      }
-
-      if (score < bestScore) {
-        bestScore = score;
-        bestStation = st;
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestStation = { ...st, temp, distance: dist };
       }
     }
 
-    const smnTemp = bestStation?.temp ?? null;
+    const smnTemp = closestStation?.temp ?? null;
 
-    const stationDesc = bestStation
-      ? `${bestStation.name} - ${bestStation.province}
-         | 🌬 ${bestStation.weather?.wind_speed ?? "-"} km/h
-         | 💧 ${bestStation.weather?.humidity ?? "-"}%
-         | 📍 ${bestStation.distance?.toFixed(1)} km`
+    const stationDesc = closestStation
+      ? `${closestStation.name} - ${closestStation.province}
+         | 💧 ${closestStation.weather?.humidity ?? "-"}%
+         | 📍 ${closestStation.distance?.toFixed(1)} km`
       : "Sin datos SMN";
 
-    console.log("SMN FINAL:", bestStation?.name, smnTemp);
-
     // -----------------------------
-    // RESULTADOs
+    // RESULTADO
     // -----------------------------
     const result = {
       city,
