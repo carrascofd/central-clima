@@ -1,5 +1,7 @@
 export default async function handler(req, res) {
-  const city = req.query.city || "San Luis";
+  const city = req.query.city;
+  const latQuery = req.query.lat;
+  const lonQuery = req.query.lon;
 
   const OPENWEATHER_KEY = process.env.OPENWEATHER_KEY;
   const WEATHERBIT_KEY = process.env.WEATHERBIT_KEY;
@@ -8,9 +10,15 @@ export default async function handler(req, res) {
     // -----------------------------
     // 1. OpenWeather
     // -----------------------------
-    const owRes = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${city},AR&units=metric&appid=${OPENWEATHER_KEY}`
-    );
+    let owUrl;
+
+	if (latQuery && lonQuery) {
+	  owUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latQuery}&lon=${lonQuery}&units=metric&appid=${OPENWEATHER_KEY}`;
+	} else {
+	  owUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city},AR&units=metric&appid=${OPENWEATHER_KEY}`;
+	}
+
+	const owRes = await fetch(owUrl);
 
     if (!owRes.ok) {
       throw new Error("Error en OpenWeather");

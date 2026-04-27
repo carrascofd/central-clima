@@ -3,70 +3,181 @@
 <head>
   <meta charset="UTF-8">
   <title>Clima 360</title>
+
   <style>
     body {
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       background: #0f172a;
       color: white;
       text-align: center;
-      padding: 40px;
+      padding: 30px;
     }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    input, button {
+      padding: 10px;
+      margin: 10px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    button {
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #2563eb;
+    }
+
     .card {
       background: #1e293b;
       padding: 20px;
       margin: 10px;
-      border-radius: 10px;
+      border-radius: 12px;
       display: inline-block;
-      width: 200px;
+      width: 220px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
-    input, button {
-      padding: 10px;
-      margin: 10px;
+
+    .cards {
+      margin-top: 20px;
+    }
+
+    small {
+      color: #cbd5f5;
     }
   </style>
 </head>
+
 <body>
 
 <h1>🌦 Clima 360 - Central de clima</h1>
 
-<input type="text" id="city" placeholder="Ciudad" value="San Luis">
-<button onclick="getWeather()">Consultar</button>
+<div>
+  <input type="text" id="city" placeholder="Ciudad (ej: San Luis)">
+  <button onclick="getWeather()">Consultar manual</button>
+</div>
 
 <div id="results"></div>
 
 <script>
+// ------------------------------
+// Geolocalización automática
+// ------------------------------
+function getLocationWeather() {
+  if (!navigator.geolocation) {
+    console.warn("Geolocalización no soportada");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      console.log("Ubicación detectada:", lat, lon);
+
+      await fetchWeatherByCoords(lat, lon);
+    },
+    (error) => {
+      console.warn("Error geolocalización:", error);
+    }
+  );
+}
+
+// ------------------------------
+// Fetch por coordenadas
+// ------------------------------
+async function fetchWeatherByCoords(lat, lon) {
+  try {
+    const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
+
+    if (!res.ok) throw new Error("Error API");
+
+    const data = await res.json();
+
+    renderWeather(data, true);
+
+  } catch (error) {
+    console.error(error);
+    alert("Error obteniendo clima por ubicación");
+  }
+}
+
+// ------------------------------
+// Fetch manual por ciudad
+// ------------------------------
 async function getWeather() {
-  const city = document.getElementById("city").value;
+  try {
+    const city = document.getElementById("city").value;
 
-  const res = await fetch(`/api/weather?city=${city}`);
-  const data = await res.json();
+    if (!city) {
+      alert("Ingresá una ciudad");
+      return;
+    }
 
+    const res = await fetch(`/api/weather?city=${city}`);
+
+    if (!res.ok) throw new Error("Error API");
+
+    const data = await res.json();
+
+    renderWeather(data, false);
+
+  } catch (error) {
+    console.error(error);
+    alert("Error obteniendo clima");
+  }
+}
+
+// ------------------------------
+// Render UI
+// ------------------------------
+function renderWeather(data, isGeo) {
   const sources = data.sources;
 
   document.getElementById("results").innerHTML = `
-    <h2>${data.city}</h2>
+    <h2>
+      ${isGeo ? "📍 Ubicación actual" : data.city}
+    </h2>
 
-    <div class="card">
-      <h3>OpenWeather</h3>
-      <p>${sources.openweather.temp ?? "-"} °C</p>
-      <small>${sources.openweather.desc ?? ""}</small>
+    <div class="cards">
+
+      <div class="card">
+        <h3>OpenWeather</h3>
+        <p>${sources.openweather?.temp ?? "-"} °C</p>
+        <small>${sources.openweather?.desc ?? ""}</small>
+      </div>
+
+      <div class="card">
+        <h3>Weatherbit</h3>
+        <p>${sources.weatherbit?.temp ?? "-"} °C</p>
+        <small>${sources.weatherbit?.desc ?? ""}</small>
+      </div>
+
+      <div class="card">
+        <h3>SMN</h3>
+        <p>${sources.smn?.temp ?? "-"} °C</p>
+        <small>${sources.smn?.desc ?? ""}</small>
+      </div>
+
     </div>
 
-    <div class="card">
-      <h3>Weatherbit</h3>
-      <p>${sources.weatherbit.temp ?? "-"} °C</p>
-      <small>${sources.weatherbit.desc ?? ""}</small>
-    </div>
-
-    <div class="card">
-	  <h3>SMN</h3>
-	  <p>${sources.smn.temp ?? "-"} °C</p>
-	  <small>${sources.smn.desc ?? ""}</small>
-	</div>
-
-    <h2>Promedio: ${data.average ?? "-"} °C</h2>
+    <h2>🌡 Promedio: ${data.average ?? "-"} °C</h2>
   `;
 }
+
+// ------------------------------
+// Auto-ejecutar al cargar
+// ------------------------------
+window.onload = () => {
+  getLocationWeather();
+};
 </script>
 
 </body>
