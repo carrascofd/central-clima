@@ -32,9 +32,15 @@ export default async function handler(req, res) {
     // -----------------------------
     // 2. Weatherbit
     // -----------------------------
-    const wbRes = await fetch(
-      `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`
-    );
+    let wbUrl;
+
+	if (latQuery && lonQuery) {
+	  wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${latQuery}&lon=${lonQuery}&key=${WEATHERBIT_KEY}`;
+	} else {
+	  wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
+	}
+
+	const wbRes = await fetch(wbUrl);
 
     const wbData = wbRes.ok ? await wbRes.json() : null;
 
