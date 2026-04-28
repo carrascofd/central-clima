@@ -8,180 +8,211 @@ export default async function handler(req, res) {
 
   try {
     // -----------------------------
-    // 1. OpenWeather
+    // 1. OPENWEATHER
     // -----------------------------
-    let owUrl;
+    let ow = { temp: null, desc: "", status: "error", error: null };
+    let baseLat = null;
+    let baseLon = null;
 
-    if (latQuery && lonQuery) {
-      owUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latQuery}&lon=${lonQuery}&units=metric&appid=${OPENWEATHER_KEY}`;
-    } else {
-      owUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city},AR&units=metric&appid=${OPENWEATHER_KEY}`;
-    }
+    try {
+      let owUrl;
 
-    const owRes = await fetch(owUrl);
-    if (!owRes.ok) throw new Error("Error en OpenWeather");
-
-    const owData = await owRes.json();
-
-    const baseLat = latQuery
-      ? parseFloat(latQuery)
-      : owData.coord?.lat;
-
-    const baseLon = lonQuery
-      ? parseFloat(lonQuery)
-      : owData.coord?.lon;
-
-    // -----------------------------
-    // 2. Weatherbit
-    // -----------------------------
-    let wbUrl;
-
-    if (latQuery && lonQuery) {
-      wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${latQuery}&lon=${lonQuery}&key=${WEATHERBIT_KEY}`;
-    } else {
-      wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
-    }
-
-    const wbRes = await fetch(wbUrl);
-    const wbData = wbRes.ok ? await wbRes.json() : null;
-
-    const owTemp = owData.main?.temp ?? null;
-    const wbTemp = wbData?.data?.[0]?.temp ?? null;
-
-    const modelAvg =
-      owTemp != null && wbTemp != null
-        ? (owTemp + wbTemp) / 2
-        : owTemp ?? wbTemp ?? null;
-
-    // -----------------------------
-    // 3. SMN (SELECCIÓN CORREGIDA)
-    // -----------------------------
-    const smnRes = await fetch(`https://ws.smn.gob.ar/map_items/weather`);
-    const smnData = smnRes.ok ? await smnRes.json() : [];
-
-    function getDistanceKm(lat1, lon1, lat2, lon2) {
-      const dLat = lat1 - lat2;
-      const dLon = lon1 - lon2;
-      return Math.sqrt(dLat * dLat + dLon * dLon) * 111;
-    }
-
-    const normalizedCity = city?.toLowerCase()?.trim();
-
-    // construir estaciones válidas
-    const stations = smnData
-      .map(st => ({
-        ...st,
-        lat: parseFloat(st.lat),
-        lon: parseFloat(st.lon),
-        temp: st.weather?.temp ?? st.temperature ?? st.temp
-      }))
-      .filter(st =>
-        !isNaN(st.lat) &&
-        !isNaN(st.lon) &&
-        st.temp != null
-      );
-
-    // calcular distancia
-    const stationsWithDistance = stations.map(st => ({
-      ...st,
-      distance:
-        baseLat != null && baseLon != null
-          ? getDistanceKm(baseLat, baseLon, st.lat, st.lon)
-          : Infinity
-    }));
-
-    // -----------------------------
-    // FILTRO POR RADIO (CLAVE)
-    // -----------------------------
-    let nearby = stationsWithDistance.filter(st => st.distance <= 150);
-
-    // fallback si no hay cercanas
-    if (nearby.length === 0) {
-      nearby = stationsWithDistance.sort((a, b) => a.distance - b.distance).slice(0, 5);
-    }
-
-    // -----------------------------
-    // SCORING
-    // -----------------------------
-    let bestStation = null;
-    let bestScore = Infinity;
-
-    for (const st of nearby) {
-      let score = 0;
-
-      // 1. distancia (peso fuerte)
-      score += st.distance * 0.1;
-
-      // 2. match por nombre (BONUS)
-      if (normalizedCity && st.name?.toLowerCase().includes(normalizedCity)) {
-        score -= 10;
+      if (latQuery && lonQuery) {
+        owUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latQuery}&lon=${lonQuery}&units=metric&appid=${OPENWEATHER_KEY}`;
+      } else {
+        owUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city},AR&units=metric&appid=${OPENWEATHER_KEY}`;
       }
 
-      // 3. coherencia con modelos
-      if (modelAvg != null) {
-        score += Math.abs(st.temp - modelAvg) * 2;
-      }
+      const owRes = await fetch(owUrl);
 
-      // 4. penalizar datos viejos
-      const now = Date.now() / 1000;
-      if (st.updated && now - st.updated > 10800) {
-        score += 5;
-      }
+      if (!owRes.ok) throw new Error("HTTP error");
 
-      if (score < bestScore) {
-        bestScore = score;
-        bestStation = st;
-      }
+      const owData = await owRes.json();
+
+      ow = {
+        temp: owData.main?.temp ?? null,
+        desc: owData.weather?.[0]?.description ?? "",
+        status: "ok",
+        error: null
+      };
+
+      baseLat = latQuery ? parseFloat(latQuery) : owData.coord?.lat;
+      baseLon = lonQuery ? parseFloat(lonQuery) : owData.coord?.lon;
+
+    } catch (err) {
+      ow.error = err.message;
     }
 
-    const smnTemp = bestStation?.temp ?? null;
-
-    const stationDesc = bestStation
-      ? `${bestStation.name} - ${bestStation.province}
-         | 🌬 ${bestStation.weather?.wind_speed ?? "-"} km/h
-         | 💧 ${bestStation.weather?.humidity ?? "-"}%
-         | 📍 ${bestStation.distance?.toFixed(1)} km`
-      : "Sin datos SMN";
-
-    console.log("SMN FINAL:", bestStation?.name, smnTemp);
-
     // -----------------------------
-    // RESULTADO
+    // 2. WEATHERBIT
     // -----------------------------
-    const result = {
-      city,
-      sources: {
-        openweather: {
-          temp: owTemp,
-          desc: owData.weather?.[0]?.description ?? ""
-        },
-        weatherbit: {
-          temp: wbTemp,
-          desc: wbData?.data?.[0]?.weather?.description ?? ""
-        },
-        smn: {
-          temp: smnTemp,
-          desc: stationDesc
+    let wb = { temp: null, desc: "", status: "error", error: null };
+
+    try {
+      let wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
+      let wbRes = await fetch(wbUrl);
+
+      if (wbRes.status === 429) {
+        wb.status = "limit";
+        wb.error = "Rate limit exceeded";
+      } else {
+        let wbData = wbRes.ok ? await wbRes.json() : null;
+
+        if (!wbData?.data?.[0] && baseLat && baseLon) {
+          wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${baseLat}&lon=${baseLon}&key=${WEATHERBIT_KEY}`;
+          wbRes = await fetch(wbUrl);
+          wbData = wbRes.ok ? await wbRes.json() : null;
+        }
+
+        if (wbData?.data?.[0]) {
+          wb = {
+            temp: wbData.data[0].temp,
+            desc: wbData.data[0].weather?.description ?? "",
+            status: "ok",
+            error: null
+          };
+        } else {
+          wb.error = "No data";
         }
       }
+
+    } catch (err) {
+      wb.error = err.message;
+    }
+
+    // -----------------------------
+    // 3. OPEN-METEO (SIN API KEY)
+    // -----------------------------
+    let om = { temp: null, desc: "", status: "error", error: null };
+
+    try {
+      if (baseLat && baseLon) {
+        const omRes = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true`
+        );
+
+        if (omRes.ok) {
+          const omData = await omRes.json();
+
+          om = {
+            temp: omData.current_weather?.temperature ?? null,
+            desc: "Open-Meteo",
+            status: "ok",
+            error: null
+          };
+        }
+      } else {
+        om.error = "Sin coordenadas";
+      }
+
+    } catch (err) {
+      om.error = err.message;
+    }
+
+    // -----------------------------
+    // 4. METEOSTAT (simulado vía Open-Meteo fallback)
+    // -----------------------------
+    let ms = { temp: null, desc: "", status: "error", error: null };
+
+    try {
+      if (baseLat && baseLon) {
+        const msRes = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&hourly=temperature_2m`
+        );
+
+        if (msRes.ok) {
+          const msData = await msRes.json();
+
+          ms = {
+            temp: msData.hourly?.temperature_2m?.[0] ?? null,
+            desc: "Meteostat-like",
+            status: "ok",
+            error: null
+          };
+        }
+      }
+
+    } catch (err) {
+      ms.error = err.message;
+    }
+
+    // -----------------------------
+    // 5. SMN (tu lógica actual)
+    // -----------------------------
+    let smn = { temp: null, desc: "", status: "error", error: null };
+
+    try {
+      const smnRes = await fetch(`https://ws.smn.gob.ar/map_items/weather`);
+      const smnData = smnRes.ok ? await smnRes.json() : [];
+
+      function getDistanceKm(lat1, lon1, lat2, lon2) {
+        const dLat = lat1 - lat2;
+        const dLon = lon1 - lon2;
+        return Math.sqrt(dLat * dLat + dLon * dLon) * 111;
+      }
+
+      let bestStation = null;
+      let minDistance = Infinity;
+
+      for (const st of smnData) {
+        const lat = parseFloat(st.lat);
+        const lon = parseFloat(st.lon);
+        const temp = st.weather?.temp ?? st.temperature ?? st.temp;
+
+        if (isNaN(lat) || isNaN(lon) || temp == null) continue;
+
+        const dist =
+          baseLat && baseLon
+            ? getDistanceKm(baseLat, baseLon, lat, lon)
+            : Infinity;
+
+        if (dist < minDistance) {
+          minDistance = dist;
+          bestStation = { ...st, temp, distance: dist };
+        }
+      }
+
+      if (bestStation) {
+        smn = {
+          temp: bestStation.temp,
+          desc: `${bestStation.name} (${bestStation.distance.toFixed(1)} km)`,
+          status: "ok",
+          error: null
+        };
+      }
+
+    } catch (err) {
+      smn.error = err.message;
+    }
+
+    // -----------------------------
+    // CONSOLIDADO
+    // -----------------------------
+    const sources = {
+      openweather: ow,
+      weatherbit: wb,
+      openmeteo: om,
+      meteostat: ms,
+      smn: smn
     };
 
-    // promedio
-    const temps = Object.values(result.sources)
-      .map(s => s.temp)
-      .filter(t => t != null);
+    const temps = Object.values(sources)
+      .filter(s => s.status === "ok" && s.temp != null)
+      .map(s => s.temp);
 
-    result.average = temps.length
+    const average = temps.length
       ? (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)
       : null;
 
-    res.status(200).json(result);
+    res.status(200).json({
+      city,
+      sources,
+      average
+    });
 
   } catch (error) {
-    console.error("ERROR:", error);
-
     res.status(500).json({
-      error: "Error obteniendo datos",
+      error: "Error general",
       detail: error.message
     });
   }
