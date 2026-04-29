@@ -1,174 +1,191 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Central de Clima</title>
 
 <style>
 body {
-  margin: 0;
+  margin:0;
   font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(180deg, #0f172a, #020617);
-  color: white;
+  background:#020617;
+  color:white;
 }
 
 /* HEADER */
-.header {
-  text-align: center;
-  padding: 20px;
+.topbar {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:15px;
+  background:#0f172a;
 }
 
-.header h1 {
-  margin-bottom: 10px;
-  font-size: 28px;
+.menu-btn {
+  font-size:22px;
+  cursor:pointer;
 }
 
-.search {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
+.search input {
+  padding:8px;
+  border-radius:8px;
+  border:none;
 }
 
-input {
-  padding: 10px;
-  border-radius: 10px;
-  border: none;
-  width: 220px;
+.search button {
+  padding:8px;
+  border:none;
+  border-radius:8px;
+  background:#3b82f6;
+  color:white;
 }
 
-button {
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: none;
-  background: #3b82f6;
-  color: white;
-  cursor: pointer;
-  transition: 0.2s;
+/* SIDEBAR */
+.sidebar {
+  position:fixed;
+  top:0;
+  left:-260px;
+  width:250px;
+  height:100%;
+  background:#0f172a;
+  padding:20px;
+  transition:0.3s;
+  z-index:10;
 }
 
-button:hover {
-  transform: scale(1.05);
+.sidebar.active {
+  left:0;
 }
 
-/* MAIN CARD */
+.sidebar h3 {
+  margin-top:0;
+}
+
+.sidebar div {
+  margin:10px 0;
+  cursor:pointer;
+}
+
+/* MAIN */
 .main {
-  margin: 20px auto;
-  width: 90%;
-  max-width: 900px;
-  background: rgba(30,41,59,0.6);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 30px;
-  text-align: center;
-  animation: fadeIn 0.5s ease;
+  padding:20px;
+  text-align:center;
 }
 
-.temp {
-  font-size: 64px;
-  font-weight: bold;
+/* CONSENSO */
+.big-temp {
+  font-size:64px;
+  font-weight:bold;
 }
 
 .confidence {
-  font-size: 18px;
-  margin-top: 10px;
+  margin-top:10px;
 }
 
-.alta { color: #22c55e; }
-.media { color: #f59e0b; }
-.baja { color: #ef4444; }
+.alta {color:#22c55e;}
+.media {color:#f59e0b;}
+.baja {color:#ef4444;}
 
-/* GRID */
-.grid {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  flex-wrap: wrap;
-  margin: 20px;
+/* METRICS */
+.metrics {
+  display:grid;
+  grid-template-columns: repeat(2,1fr);
+  gap:10px;
+  margin-top:20px;
+}
+
+.metric {
+  background:#0f172a;
+  padding:15px;
+  border-radius:12px;
+}
+
+/* SOURCES */
+.sources {
+  margin-top:20px;
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
 }
 
 .card {
-  width: 200px;
-  background: rgba(30,41,59,0.6);
-  border-radius: 15px;
-  padding: 15px;
-  text-align: center;
-  transition: 0.3s;
-  animation: fadeUp 0.5s ease;
+  min-width:150px;
+  background:#0f172a;
+  padding:10px;
+  border-radius:10px;
 }
 
-.card:hover {
-  transform: translateY(-5px);
-}
-
-.icon {
-  font-size: 28px;
-}
-
-.value {
-  font-size: 22px;
-  margin: 10px 0;
-}
-
-.ok { border-left: 4px solid #22c55e; }
-.error { border-left: 4px solid #ef4444; }
-.limit { border-left: 4px solid #f59e0b; }
-.outlier { border-left: 4px solid #a855f7; }
+.ok {border-left:4px solid #22c55e;}
+.outlier {border-left:4px solid purple;}
+.error {border-left:4px solid red;}
 
 .outlier-text {
-  text-decoration: line-through;
-  opacity: 0.5;
-}
-
-/* ANIMATIONS */
-@keyframes fadeIn {
-  from { opacity:0; transform: translateY(-10px);}
-  to { opacity:1; transform: translateY(0);}
-}
-
-@keyframes fadeUp {
-  from { opacity:0; transform: translateY(10px);}
-  to { opacity:1; transform: translateY(0);}
+  text-decoration:line-through;
+  opacity:0.5;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">
-  <h1>?? Central de Clima</h1>
+<!-- SIDEBAR -->
+<div id="sidebar" class="sidebar">
+  <h3>?? Panel</h3>
+  <div onclick="alert('Pr車ximo: hist車rico')">?? Hist車rico</div>
+  <div onclick="alert('Pr車ximo: mapa')">??? Mapa</div>
+  <div onclick="alert('Pr車ximo: alertas')">?? Alertas</div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="menu-btn" onclick="toggleMenu()">?</div>
 
   <div class="search">
-    <input id="city" placeholder="Ej: San Luis"/>
-    <button onclick="getWeather()">Consultar</button>
-    <button onclick="getLocationWeather()">??</button>
+    <input id="city" placeholder="Ciudad">
+    <button onclick="getWeather()">OK</button>
   </div>
+
+  <div onclick="getLocation()">??</div>
 </div>
 
+<!-- MAIN -->
 <div class="main">
-  <div id="icon" class="icon">?</div>
-  <div id="temp" class="temp">-- &deg;C</div>
-  <div id="confidence" class="confidence"></div>
-</div>
 
-<div id="grid" class="grid"></div>
+  <div id="temp" class="big-temp">--～C</div>
+
+  <div id="confidence" class="confidence"></div>
+
+  <!-- M谷TRICAS -->
+  <div class="metrics">
+    <div class="metric">?? Humedad: <span id="humidity">--</span></div>
+    <div class="metric">?? Viento: <span id="wind">--</span></div>
+    <div class="metric">?? Fuente SMN: <span id="smnStation">--</span></div>
+    <div class="metric">?? APIs activas: <span id="apiCount">--</span></div>
+  </div>
+
+  <!-- SOURCES -->
+  <div id="sources" class="sources"></div>
+
+</div>
 
 <script>
 
-// ICONOS SIMPLES (puedes mejorar despu谷s)
-function getIcon(temp) {
-  if (temp == null) return "?";
-  if (temp < 5) return "??";
-  if (temp < 15) return "???";
-  if (temp < 25) return "?";
-  return "??";
+function toggleMenu(){
+  document.getElementById("sidebar").classList.toggle("active");
 }
 
-async function getWeather(lat=null, lon=null) {
+function getLocation(){
+  navigator.geolocation.getCurrentPosition(pos=>{
+    getWeather(pos.coords.latitude,pos.coords.longitude);
+  });
+}
+
+async function getWeather(lat=null,lon=null){
   const city = document.getElementById("city").value || "San Luis";
 
   let url = `/api/weather?city=${city}`;
-  if (lat && lon) url += `&lat=${lat}&lon=${lon}`;
+  if(lat && lon) url += `&lat=${lat}&lon=${lon}`;
 
   const res = await fetch(url);
   const data = await res.json();
@@ -176,50 +193,53 @@ async function getWeather(lat=null, lon=null) {
   render(data);
 }
 
-function getLocationWeather() {
-  navigator.geolocation.getCurrentPosition(pos => {
-    getWeather(pos.coords.latitude, pos.coords.longitude);
-  });
-}
-
-function render(data) {
+function render(data){
 
   // CONSENSO
   document.getElementById("temp").innerHTML =
-    data.consensus ? `${data.consensus} &deg;C` : "--";
+    data.consensus ? `${data.consensus}～C` : "--";
 
-  document.getElementById("confidence").innerHTML = `
-    Confianza:
-    <span class="${data.confidence}">
-      ${data.confidence.toUpperCase()} (${data.confidenceScore}%)
-    </span>
-  `;
+  document.getElementById("confidence").innerHTML =
+    `Confianza: <span class="${data.confidence}">
+      ${data.confidence} (${data.confidenceScore}%)
+    </span>`;
 
-  document.getElementById("icon").innerHTML = getIcon(data.consensus);
+  // METRICS (fallback simple)
+  document.getElementById("humidity").innerText =
+    data.sources.smn?.desc?.match(/(\d+)%/)?.[1] || "--";
 
-  // TARJETAS
-  const grid = document.getElementById("grid");
-  grid.innerHTML = "";
+  document.getElementById("wind").innerText =
+    data.sources.smn?.desc?.match(/(\d+) km/)?.[1] || "--";
 
-  Object.entries(data.sources).forEach(([name, s]) => {
+  document.getElementById("smnStation").innerText =
+    data.sources.smn?.desc?.split("|")[0] || "--";
+
+  // API COUNT
+  const active = Object.values(data.sources)
+    .filter(s=>s.status==="ok").length;
+
+  document.getElementById("apiCount").innerText = active;
+
+  // SOURCES
+  const container = document.getElementById("sources");
+  container.innerHTML = "";
+
+  Object.entries(data.sources).forEach(([name,s])=>{
 
     const card = document.createElement("div");
     card.className = `card ${s.status}`;
 
-    const isOutlier = s.status === "outlier";
+    const outlier = s.status==="outlier";
 
     card.innerHTML = `
-      <div class="icon">${getIcon(s.temp)}</div>
-      <h3>${name.toUpperCase()}</h3>
-
-      <div class="value ${isOutlier ? "outlier-text" : ""}">
-        ${s.temp != null ? s.temp + " ～C" : "--"}
+      <strong>${name}</strong>
+      <div class="${outlier?'outlier-text':''}">
+        ${s.temp ?? "--"}～C
       </div>
-
       <small>${s.status}</small>
     `;
 
-    grid.appendChild(card);
+    container.appendChild(card);
   });
 }
 
