@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <title>Central de Clima</title>
+
   <style>
     body {
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       background: #0f172a;
       color: white;
       text-align: center;
@@ -24,7 +25,7 @@
     }
 
     button {
-      padding: 10px 20px;
+      padding: 10px 15px;
       border: none;
       border-radius: 8px;
       background: #3b82f6;
@@ -33,8 +34,29 @@
       margin-left: 5px;
     }
 
-    .container {
+    .main-card {
+      background: #1e293b;
+      padding: 25px;
+      border-radius: 15px;
       margin-top: 20px;
+    }
+
+    .consensus {
+      font-size: 48px;
+      font-weight: bold;
+    }
+
+    .confidence {
+      margin-top: 10px;
+      font-size: 18px;
+    }
+
+    .alta { color: #22c55e; }
+    .media { color: #f59e0b; }
+    .baja { color: #ef4444; }
+
+    .sources {
+      margin-top: 25px;
       display: flex;
       justify-content: center;
       flex-wrap: wrap;
@@ -52,15 +74,21 @@
     .ok { border-left: 5px solid #22c55e; }
     .error { border-left: 5px solid #ef4444; }
     .limit { border-left: 5px solid #f59e0b; }
+    .outlier { border-left: 5px solid #a855f7; }
 
     .temp {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: bold;
     }
 
-    .avg {
-      margin-top: 20px;
-      font-size: 28px;
+    .outlier-text {
+      text-decoration: line-through;
+      color: #888;
+    }
+
+    .status {
+      font-size: 12px;
+      margin-top: 5px;
     }
   </style>
 </head>
@@ -70,11 +98,16 @@
 
   <input type="text" id="city" placeholder="Ej: San Luis" />
   <button onclick="getWeather()">Consultar</button>
-  <button onclick="getLocationWeather()">?? Mi ubicaci®Æn</button>
+  <button onclick="getLocationWeather()">?? Ubicaci®Æn</button>
 
-  <div class="container" id="results"></div>
+  <!-- CONSENSO -->
+  <div class="main-card">
+    <div id="consensus" class="consensus">-- °„C</div>
+    <div id="confidence" class="confidence"></div>
+  </div>
 
-  <div class="avg" id="average"></div>
+  <!-- FUENTES -->
+  <div id="sources" class="sources"></div>
 
 <script>
 async function getWeather(lat = null, lon = null) {
@@ -94,45 +127,52 @@ async function getWeather(lat = null, lon = null) {
 
 function getLocationWeather() {
   navigator.geolocation.getCurrentPosition(pos => {
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-
-    getWeather(lat, lon);
+    getWeather(pos.coords.latitude, pos.coords.longitude);
   });
 }
 
 function render(data) {
-  const container = document.getElementById("results");
-  const avgDiv = document.getElementById("average");
+  // CONSENSO
+  const consensusEl = document.getElementById("consensus");
+  const confidenceEl = document.getElementById("confidence");
+  const sourcesEl = document.getElementById("sources");
 
-  container.innerHTML = "";
+  consensusEl.innerHTML = data.consensus
+    ? `${data.consensus} °„C`
+    : "-- °„C";
 
-  const sources = data.sources;
+  confidenceEl.innerHTML = `
+    Confianza:
+    <span class="${data.confidence}">
+      ${data.confidence.toUpperCase()} (${data.confidenceScore}%)
+    </span>
+  `;
 
-  Object.keys(sources).forEach(key => {
-    const s = sources[key];
+  // FUENTES
+  sourcesEl.innerHTML = "";
+
+  Object.entries(data.sources).forEach(([name, s]) => {
 
     const card = document.createElement("div");
     card.className = `card ${s.status}`;
 
+    let tempClass = "";
+    if (s.status === "outlier") tempClass = "outlier-text";
+
     card.innerHTML = `
-      <h3>${key.toUpperCase()}</h3>
-      <div class="temp">${s.temp !== null ? s.temp + "°„C" : "--"}</div>
-      <div>${s.desc || ""}</div>
-      <div style="margin-top:5px; font-size:12px;">
-        Estado: ${s.status}
+      <h3>${name.toUpperCase()}</h3>
+
+      <div class="temp ${tempClass}">
+        ${s.temp != null ? s.temp + "°„C" : "--"}
       </div>
-      <div style="color:#f87171; font-size:11px;">
-        ${s.error || ""}
+
+      <div class="status">
+        Estado: ${s.status}
       </div>
     `;
 
-    container.appendChild(card);
+    sourcesEl.appendChild(card);
   });
-
-  avgDiv.innerHTML = data.average
-    ? `?? Promedio: ${data.average} °„C`
-    : "Sin datos suficientes";
 }
 </script>
 
