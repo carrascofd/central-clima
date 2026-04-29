@@ -1,123 +1,174 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Central de Clima</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Central de Clima</title>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: white;
-      text-align: center;
-      padding: 20px;
-    }
+<style>
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(180deg, #0f172a, #020617);
+  color: white;
+}
 
-    h1 {
-      margin-bottom: 10px;
-    }
+/* HEADER */
+.header {
+  text-align: center;
+  padding: 20px;
+}
 
-    input {
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      width: 200px;
-    }
+.header h1 {
+  margin-bottom: 10px;
+  font-size: 28px;
+}
 
-    button {
-      padding: 10px 15px;
-      border: none;
-      border-radius: 8px;
-      background: #3b82f6;
-      color: white;
-      cursor: pointer;
-      margin-left: 5px;
-    }
+.search {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
 
-    .main-card {
-      background: #1e293b;
-      padding: 25px;
-      border-radius: 15px;
-      margin-top: 20px;
-    }
+input {
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  width: 220px;
+}
 
-    .consensus {
-      font-size: 48px;
-      font-weight: bold;
-    }
+button {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  background: #3b82f6;
+  color: white;
+  cursor: pointer;
+  transition: 0.2s;
+}
 
-    .confidence {
-      margin-top: 10px;
-      font-size: 18px;
-    }
+button:hover {
+  transform: scale(1.05);
+}
 
-    .alta { color: #22c55e; }
-    .media { color: #f59e0b; }
-    .baja { color: #ef4444; }
+/* MAIN CARD */
+.main {
+  margin: 20px auto;
+  width: 90%;
+  max-width: 900px;
+  background: rgba(30,41,59,0.6);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  animation: fadeIn 0.5s ease;
+}
 
-    .sources {
-      margin-top: 25px;
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 15px;
-    }
+.temp {
+  font-size: 64px;
+  font-weight: bold;
+}
 
-    .card {
-      background: #1e293b;
-      padding: 15px;
-      border-radius: 12px;
-      width: 220px;
-      text-align: left;
-    }
+.confidence {
+  font-size: 18px;
+  margin-top: 10px;
+}
 
-    .ok { border-left: 5px solid #22c55e; }
-    .error { border-left: 5px solid #ef4444; }
-    .limit { border-left: 5px solid #f59e0b; }
-    .outlier { border-left: 5px solid #a855f7; }
+.alta { color: #22c55e; }
+.media { color: #f59e0b; }
+.baja { color: #ef4444; }
 
-    .temp {
-      font-size: 22px;
-      font-weight: bold;
-    }
+/* GRID */
+.grid {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin: 20px;
+}
 
-    .outlier-text {
-      text-decoration: line-through;
-      color: #888;
-    }
+.card {
+  width: 200px;
+  background: rgba(30,41,59,0.6);
+  border-radius: 15px;
+  padding: 15px;
+  text-align: center;
+  transition: 0.3s;
+  animation: fadeUp 0.5s ease;
+}
 
-    .status {
-      font-size: 12px;
-      margin-top: 5px;
-    }
-  </style>
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.icon {
+  font-size: 28px;
+}
+
+.value {
+  font-size: 22px;
+  margin: 10px 0;
+}
+
+.ok { border-left: 4px solid #22c55e; }
+.error { border-left: 4px solid #ef4444; }
+.limit { border-left: 4px solid #f59e0b; }
+.outlier { border-left: 4px solid #a855f7; }
+
+.outlier-text {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+/* ANIMATIONS */
+@keyframes fadeIn {
+  from { opacity:0; transform: translateY(-10px);}
+  to { opacity:1; transform: translateY(0);}
+}
+
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(10px);}
+  to { opacity:1; transform: translateY(0);}
+}
+</style>
 </head>
+
 <body>
 
+<div class="header">
   <h1>?? Central de Clima</h1>
 
-  <input type="text" id="city" placeholder="Ej: San Luis" />
-  <button onclick="getWeather()">Consultar</button>
-  <button onclick="getLocationWeather()">?? Ubicaci®Æn</button>
-
-  <!-- CONSENSO -->
-  <div class="main-card">
-    <div id="consensus" class="consensus">-- °„C</div>
-    <div id="confidence" class="confidence"></div>
+  <div class="search">
+    <input id="city" placeholder="Ej: San Luis"/>
+    <button onclick="getWeather()">Consultar</button>
+    <button onclick="getLocationWeather()">??</button>
   </div>
+</div>
 
-  <!-- FUENTES -->
-  <div id="sources" class="sources"></div>
+<div class="main">
+  <div id="icon" class="icon">?</div>
+  <div id="temp" class="temp">-- &deg;C</div>
+  <div id="confidence" class="confidence"></div>
+</div>
+
+<div id="grid" class="grid"></div>
 
 <script>
-async function getWeather(lat = null, lon = null) {
+
+// ICONOS SIMPLES (puedes mejorar despu®¶s)
+function getIcon(temp) {
+  if (temp == null) return "?";
+  if (temp < 5) return "??";
+  if (temp < 15) return "???";
+  if (temp < 25) return "?";
+  return "??";
+}
+
+async function getWeather(lat=null, lon=null) {
   const city = document.getElementById("city").value || "San Luis";
 
-  let url = `/api/weather?city=${encodeURIComponent(city)}`;
-
-  if (lat && lon) {
-    url += `&lat=${lat}&lon=${lon}`;
-  }
+  let url = `/api/weather?city=${city}`;
+  if (lat && lon) url += `&lat=${lat}&lon=${lon}`;
 
   const res = await fetch(url);
   const data = await res.json();
@@ -132,48 +183,46 @@ function getLocationWeather() {
 }
 
 function render(data) {
+
   // CONSENSO
-  const consensusEl = document.getElementById("consensus");
-  const confidenceEl = document.getElementById("confidence");
-  const sourcesEl = document.getElementById("sources");
+  document.getElementById("temp").innerHTML =
+    data.consensus ? `${data.consensus} &deg;C` : "--";
 
-  consensusEl.innerHTML = data.consensus
-    ? `${data.consensus} °„C`
-    : "-- °„C";
-
-  confidenceEl.innerHTML = `
+  document.getElementById("confidence").innerHTML = `
     Confianza:
     <span class="${data.confidence}">
       ${data.confidence.toUpperCase()} (${data.confidenceScore}%)
     </span>
   `;
 
-  // FUENTES
-  sourcesEl.innerHTML = "";
+  document.getElementById("icon").innerHTML = getIcon(data.consensus);
+
+  // TARJETAS
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
 
   Object.entries(data.sources).forEach(([name, s]) => {
 
     const card = document.createElement("div");
     card.className = `card ${s.status}`;
 
-    let tempClass = "";
-    if (s.status === "outlier") tempClass = "outlier-text";
+    const isOutlier = s.status === "outlier";
 
     card.innerHTML = `
+      <div class="icon">${getIcon(s.temp)}</div>
       <h3>${name.toUpperCase()}</h3>
 
-      <div class="temp ${tempClass}">
-        ${s.temp != null ? s.temp + "°„C" : "--"}
+      <div class="value ${isOutlier ? "outlier-text" : ""}">
+        ${s.temp != null ? s.temp + " °„C" : "--"}
       </div>
 
-      <div class="status">
-        Estado: ${s.status}
-      </div>
+      <small>${s.status}</small>
     `;
 
-    sourcesEl.appendChild(card);
+    grid.appendChild(card);
   });
 }
+
 </script>
 
 </body>
