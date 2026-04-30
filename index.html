@@ -2,6 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <title>Central de Clima</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
@@ -127,9 +129,6 @@ function initMap(lat, lon) {
   }
 }
 
-// -----------------------------
-// AUTO GEOLOCALIZACI®ÆN
-// -----------------------------
 window.onload = () => {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => {
@@ -137,15 +136,10 @@ window.onload = () => {
       const lon = pos.coords.longitude;
 
       cargar(lat, lon);
-    }, () => {
-      console.warn("No se pudo obtener ubicaci®Æn");
     });
   }
 };
 
-// -----------------------------
-// BUSCAR POR INPUT
-// -----------------------------
 function buscar() {
   const city = document.getElementById("city").value;
   if (!city) return;
@@ -155,9 +149,6 @@ function buscar() {
     .then(render);
 }
 
-// -----------------------------
-// CARGAR POR COORDENADAS
-// -----------------------------
 function cargar(lat, lon) {
   fetch(`/api/weather?lat=${lat}&lon=${lon}`)
     .then(r => r.json())
@@ -167,12 +158,8 @@ function cargar(lat, lon) {
     });
 }
 
-// -----------------------------
-// RENDER
-// -----------------------------
 function render(data) {
 
-  // temperatura principal
   document.getElementById("temp").innerText =
     data.consensus != null ? `${data.consensus} °„C` : "-- °„C";
 
@@ -188,9 +175,6 @@ function render(data) {
   document.getElementById("sources").innerText =
     `Fuentes OK: ${active}`;
 
-  // -----------------------------
-  // APIs (TODAS VISIBLES)
-  // -----------------------------
   const container = document.getElementById("apis");
   container.innerHTML = "";
 
