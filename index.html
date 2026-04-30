@@ -1,175 +1,70 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
+<meta charset="UTF-8">
 <title>Clima 360 PRO</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-body {
-  margin:0;
-  font-family: 'Segoe UI', sans-serif;
-  background:#0f172a;
-  color:white;
-}
-
-/* HEADER */
-.header {
-  padding:15px;
-  display:flex;
-  gap:10px;
-  justify-content:center;
-}
-
-input {
-  padding:10px;
-  border-radius:8px;
-  border:none;
-  width:200px;
-}
-
-button {
-  padding:10px 15px;
-  border:none;
-  border-radius:8px;
-  background:#3b82f6;
-  color:white;
-  cursor:pointer;
-}
-
-/* MAIN */
-.container {
-  max-width:1100px;
-  margin:auto;
-  padding:15px;
-}
-
-/* CARD PRINCIPAL */
-.main-card {
-  background:#1e293b;
-  padding:20px;
-  border-radius:15px;
-  margin-bottom:20px;
-}
-
-.temp {
-  font-size:48px;
-  font-weight:bold;
-}
-
-.desc {
-  opacity:.8;
-}
-
-/* GRID */
-.grid {
-  display:grid;
-  grid-template-columns: 1fr 350px;
-  gap:15px;
-}
-
-.info-box {
-  background:#1e293b;
-  padding:15px;
-  border-radius:12px;
-}
-
-/* MAPA */
-#map {
-  height:250px;
-  border-radius:12px;
-}
-
-/* TABS */
-.tabs {
-  display:flex;
-  margin-top:20px;
-}
-
-.tab {
-  flex:1;
-  padding:10px;
-  text-align:center;
-  background:#1e293b;
-  cursor:pointer;
-  border-right:1px solid #334155;
-}
-
-.tab.active {
-  background:#3b82f6;
-}
-
-.tab-content {
-  background:#1e293b;
-  padding:15px;
-  border-radius:0 0 12px 12px;
-}
-
-/* STATUS */
+body { font-family: Arial; background:#0f172a; color:white; margin:0; }
+.header { padding:15px; text-align:center; }
+input, button { padding:10px; border-radius:8px; border:none; }
+.container { max-width:1000px; margin:auto; padding:15px; }
+.card { background:#1e293b; padding:15px; border-radius:12px; margin-bottom:15px; }
+.grid { display:grid; grid-template-columns:1fr 300px; gap:10px; }
+#map { height:250px; border-radius:12px; }
+.tabs { display:flex; margin-top:10px; }
+.tab { flex:1; padding:10px; background:#1e293b; cursor:pointer; text-align:center; }
+.tab.active { background:#3b82f6; }
 .ok { color:#22c55e; }
 .fail { color:#ef4444; }
-
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <input id="city" placeholder="Ej: San Luis"/>
+  <input id="city" placeholder="Ciudad">
   <button onclick="getWeather()">Consultar</button>
   <button onclick="getLocation()">??</button>
 </div>
 
 <div class="container">
 
-  <!-- MAIN -->
-  <div class="main-card">
-    <div id="temp" class="temp">-- °„C</div>
-    <div id="desc" class="desc">---</div>
-    <div id="confidence"></div>
-  </div>
+<div class="card">
+  <h1 id="temp">-- °„C</h1>
+  <div id="desc"></div>
+  <div id="confidence"></div>
+</div>
 
-  <!-- GRID -->
-  <div class="grid">
-    <div class="info-box">
-      <h3>Detalles</h3>
-      <div id="details"></div>
-    </div>
+<div class="grid">
+  <div class="card" id="details"></div>
+  <div id="map"></div>
+</div>
 
-    <div id="map"></div>
-  </div>
+<div class="tabs">
+  <div class="tab active" onclick="showTab('openweather')">OW</div>
+  <div class="tab" onclick="showTab('weatherbit')">WB</div>
+  <div class="tab" onclick="showTab('openmeteo')">OM</div>
+  <div class="tab" onclick="showTab('smn')">SMN</div>
+</div>
 
-  <!-- TABS -->
-  <div class="tabs">
-    <div class="tab active" onclick="showTab('ow')">OpenWeather</div>
-    <div class="tab" onclick="showTab('wb')">Weatherbit</div>
-    <div class="tab" onclick="showTab('om')">OpenMeteo</div>
-    <div class="tab" onclick="showTab('smn')">SMN</div>
-  </div>
-
-  <div id="tab-content" class="tab-content"></div>
+<div class="card" id="tabContent"></div>
 
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
+const DEG = "\u00B0";
+let map, marker, dataGlobal;
 
-let map;
-let marker;
-let dataGlobal = null;
-
-function initMap(lat, lon) {
-  if (!map) {
+function initMap(lat, lon){
+  if(!map){
     map = L.map('map').setView([lat, lon], 10);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:'? OpenStreetMap'
-    }).addTo(map);
-
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     marker = L.marker([lat, lon]).addTo(map);
   } else {
     map.setView([lat, lon], 10);
@@ -177,16 +72,11 @@ function initMap(lat, lon) {
   }
 }
 
-async function getWeather(lat=null, lon=null) {
-  const city = document.getElementById("city").value;
-
+async function getWeather(lat=null, lon=null){
   let url = "/api/weather";
 
-  if (lat && lon) {
-    url += `?lat=${lat}&lon=${lon}`;
-  } else {
-    url += `?city=${city}`;
-  }
+  if(lat && lon) url += `?lat=${lat}&lon=${lon}`;
+  else url += `?city=${document.getElementById("city").value}`;
 
   const res = await fetch(url);
   const data = await res.json();
@@ -194,74 +84,46 @@ async function getWeather(lat=null, lon=null) {
   dataGlobal = data;
 
   document.getElementById("temp").innerText =
-    (data.consensus ?? "--") + " °„C";
+    (data.consensus ?? "--") + " " + DEG + "C";
 
-  document.getElementById("desc").innerText =
-    data.note || "Sin observaciones";
+  document.getElementById("desc").innerText = data.note || "";
+  document.getElementById("confidence").innerText =
+    "Confianza: " + data.confidence;
 
-  document.getElementById("confidence").innerHTML =
-    "Confianza: " + (data.confidence || "-");
+  document.getElementById("details").innerHTML =
+    `Promedio: ${data.average ?? "-"} ${DEG}C <br>
+     Fuentes OK: ${Object.values(data.status).filter(s=>s==="ok").length}`;
 
-  document.getElementById("details").innerHTML = `
-    Promedio APIs: ${data.average ?? "-"} °„C <br>
-    Fuentes activas: ${Object.values(data.status || {}).filter(s => s==="ok").length}
-  `;
+  if(data.coord?.lat) initMap(data.coord.lat, data.coord.lon);
 
-  if (data.coord) {
-    initMap(data.coord.lat, data.coord.lon);
-  }
-
-  showTab("ow");
+  showTab("openweather");
 }
 
-function showTab(tab) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+function showTab(name){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
 
-  document.querySelectorAll(".tab").forEach(t => {
-    if (t.innerText.toLowerCase().includes(tab)) {
+  document.querySelectorAll(".tab").forEach(t=>{
+    if(t.innerText.toLowerCase().includes(name.substring(0,2))) {
       t.classList.add("active");
     }
   });
 
-  if (!dataGlobal) return;
+  const s = dataGlobal.sources[name];
+  const status = dataGlobal.status[name];
 
-  const src = dataGlobal.sources;
-
-  let html = "";
-
-  if (tab === "ow") {
-    html = renderSource("OpenWeather", src.openweather, dataGlobal.status.openweather);
-  }
-  if (tab === "wb") {
-    html = renderSource("Weatherbit", src.weatherbit, dataGlobal.status.weatherbit);
-  }
-  if (tab === "om") {
-    html = renderSource("OpenMeteo", src.openmeteo, dataGlobal.status.openmeteo);
-  }
-  if (tab === "smn") {
-    html = renderSource("SMN", src.smn, dataGlobal.status.smn);
-  }
-
-  document.getElementById("tab-content").innerHTML = html;
-}
-
-function renderSource(name, src, status) {
-  return `
+  document.getElementById("tabContent").innerHTML = `
     <h3>${name}</h3>
-    <p>Temperatura: ${src?.temp ?? "-"} °„C</p>
-    <p>${src?.desc ?? ""}</p>
-    <p class="${status === "ok" ? "ok" : "fail"}">
-      Estado: ${status}
-    </p>
+    <p>Temp: ${s?.temp ?? "-"} ${DEG}C</p>
+    <p>${s?.desc ?? ""}</p>
+    <p class="${status==="ok"?"ok":"fail"}">Estado: ${status}</p>
   `;
 }
 
-function getLocation() {
-  navigator.geolocation.getCurrentPosition(pos => {
+function getLocation(){
+  navigator.geolocation.getCurrentPosition(pos=>{
     getWeather(pos.coords.latitude, pos.coords.longitude);
   });
 }
-
 </script>
 
 </body>

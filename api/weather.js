@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const city = req.query.city || "San Luis";
+  const city = req.query.city || null;
   const latQuery = req.query.lat;
   const lonQuery = req.query.lon;
 
@@ -7,90 +7,107 @@ export default async function handler(req, res) {
   const WEATHERBIT_KEY = process.env.WEATHERBIT_KEY;
 
   try {
+    // -----------------------------
+    // 1. OpenWeather
+    // -----------------------------
+    let owTemp = null;
+    let owDesc = "";
     let baseLat = null;
     let baseLon = null;
 
-    // -----------------------------
-    // 1. OPENWEATHER
-    // -----------------------------
-    let ow = { temp: null, status: "error" };
-
     try {
-      const owUrl =
-        latQuery && lonQuery
-          ? `https://api.openweathermap.org/data/2.5/weather?lat=${latQuery}&lon=${lonQuery}&units=metric&appid=${OPENWEATHER_KEY}`
-          : `https://api.openweathermap.org/data/2.5/weather?q=${city},AR&units=metric&appid=${OPENWEATHER_KEY}`;
+      let owUrl;
+
+      if (latQuery && lonQuery) {
+        owUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latQuery}&lon=${lonQuery}&units=metric&appid=${OPENWEATHER_KEY}`;
+      } else {
+        owUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city},AR&units=metric&appid=${OPENWEATHER_KEY}`;
+      }
 
       const owRes = await fetch(owUrl);
-      const owData = await owRes.json();
 
       if (owRes.ok) {
-        ow = {
-          temp: owData.main?.temp ?? null,
-          status: "ok"
-        };
+        const owData = await owRes.json();
+
+        owTemp = owData.main?.temp ?? null;
+        owDesc = owData.weather?.[0]?.description ?? "";
 
         baseLat = latQuery ? parseFloat(latQuery) : owData.coord?.lat;
         baseLon = lonQuery ? parseFloat(lonQuery) : owData.coord?.lon;
       }
-    } catch {}
+
+    } catch (e) {
+      console.error("OpenWeather error:", e);
+    }
 
     // -----------------------------
-    // 2. WEATHERBIT
+    // 2. Weatherbit
     // -----------------------------
-    let wb = { temp: null, status: "error" };
+    let wbTemp = null;
+    let wbDesc = "";
 
     try {
-      let wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
+      let wbUrl;
+
+      if (latQuery && lonQuery) {
+        wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${latQuery}&lon=${lonQuery}&key=${WEATHERBIT_KEY}`;
+      } else {
+        wbUrl = `https://api.weatherbit.io/v2.0/current?city=${city}&country=AR&key=${WEATHERBIT_KEY}`;
+      }
+
       let wbRes = await fetch(wbUrl);
 
-      if (wbRes.status === 429) {
-        wb.status = "limit";
-      } else {
-        let wbData = wbRes.ok ? await wbRes.json() : null;
-
-        if (!wbData?.data?.[0] && baseLat && baseLon) {
-          wbUrl = `https://api.weatherbit.io/v2.0/current?lat=${baseLat}&lon=${baseLon}&key=${WEATHERBIT_KEY}`;
-          wbRes = await fetch(wbUrl);
-          wbData = wbRes.ok ? await wbRes.json() : null;
-        }
-
-        if (wbData?.data?.[0]) {
-          wb = {
-            temp: wbData.data[0].temp,
-            status: "ok"
-          };
-        }
+      // fallback si falla
+      if (!wbRes.ok && baseLat && baseLon) {
+        wbRes = await fetch(
+          `https://api.weatherbit.io/v2.0/current?lat=${baseLat}&lon=${baseLon}&key=${WEATHERBIT_KEY}`
+        );
       }
-    } catch {}
+
+      if (wbRes.ok) {
+        const wbData = await wbRes.json();
+        wbTemp = wbData?.data?.[0]?.temp ?? null;
+        wbDesc = wbData?.data?.[0]?.weather?.description ?? "";
+      } else {
+        const txt = await wbRes.text();
+        console.warn("Weatherbit fallo:", txt);
+      }
+
+    } catch (e) {
+      console.error("Weatherbit error:", e);
+    }
 
     // -----------------------------
-    // 3. OPEN-METEO
+    // 3. OpenMeteo
     // -----------------------------
-    let om = { temp: null, status: "error" };
+    let omTemp = null;
+    let omDesc = "";
 
     try {
       if (baseLat && baseLon) {
-        const resOm = await fetch(
+        const omRes = await fetch(
           `https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true`
         );
-        const data = await resOm.json();
 
-        om = {
-          temp: data.current_weather?.temperature ?? null,
-          status: "ok"
-        };
+        if (omRes.ok) {
+          const omData = await omRes.json();
+          omTemp = omData?.current_weather?.temperature ?? null;
+          omDesc = "Modelo OpenMeteo";
+        }
       }
-    } catch {}
+    } catch (e) {
+      console.error("OpenMeteo error:", e);
+    }
 
     // -----------------------------
-    // 4. SMN (simple estable)
+    // 4. SMN
     // -----------------------------
-    let smn = { temp: null, status: "error" };
+    let smnTemp = null;
+    let smnDesc = "";
 
     try {
       const smnRes = await fetch(`https://ws.smn.gob.ar/map_items/weather`);
-      const smnData = await smnRes.json();
+      const smnData = smnRes.ok ? await smnRes.json() : [];
 
       function distKm(a, b, c, d) {
         return Math.sqrt((a - c) ** 2 + (b - d) ** 2) * 111;
@@ -104,112 +121,72 @@ export default async function handler(req, res) {
         const lon = parseFloat(st.lon);
         const temp = st.weather?.temp;
 
-        if (!lat || !lon || temp == null) continue;
+        if (!lat || !lon || temp == null || !baseLat || !baseLon) continue;
 
-        const d = baseLat && baseLon ? distKm(baseLat, baseLon, lat, lon) : 9999;
+        const d = distKm(baseLat, baseLon, lat, lon);
 
-        if (d < min) {
+        if (d < min && d < 200) {
           min = d;
-          best = { temp, distance: d };
+          best = st;
         }
       }
 
       if (best) {
-        smn = {
-          temp: best.temp,
-          status: "ok",
-          distance: best.distance
-        };
+        smnTemp = best.weather?.temp;
+        smnDesc = `${best.name} - ${best.province}`;
       }
-    } catch {}
 
-    // -----------------------------
-    // 🔥 CONSENSO PROFESIONAL
-    // -----------------------------
-
-    const sources = {
-      openweather: ow,
-      weatherbit: wb,
-      openmeteo: om,
-      smn: smn
-    };
-
-    // 1. recolectar válidos
-    let values = Object.entries(sources)
-      .filter(([_, s]) => s.status === "ok" && s.temp != null)
-      .map(([name, s]) => ({ name, value: s.temp }));
-
-    // 2. promedio inicial
-    const avg =
-      values.reduce((a, b) => a + b.value, 0) / (values.length || 1);
-
-    // 3. desviación
-    const variance =
-      values.reduce((a, b) => a + Math.pow(b.value - avg, 2), 0) /
-      (values.length || 1);
-
-    const std = Math.sqrt(variance);
-
-    // 4. eliminar outliers
-    const filtered = values.filter(v => Math.abs(v.value - avg) <= std * 2);
-
-    // marcar descartados
-    values.forEach(v => {
-      if (!filtered.find(f => f.name === v.name)) {
-        sources[v.name].status = "outlier";
-      }
-    });
-
-    // 5. pesos
-    const weights = {
-      smn: 1.5,
-      openweather: 1.2,
-      openmeteo: 1.1,
-      weatherbit: 1.0
-    };
-
-    // 6. promedio ponderado
-    let sum = 0;
-    let weightSum = 0;
-
-    filtered.forEach(v => {
-      const w = weights[v.name] || 1;
-      sum += v.value * w;
-      weightSum += w;
-    });
-
-    const consensus =
-      weightSum > 0 ? Number((sum / weightSum).toFixed(1)) : null;
-
-    // -----------------------------
-    // 🔥 CONFIANZA
-    // -----------------------------
-    let confidence = "baja";
-    let confidenceScore = 0;
-
-    if (filtered.length >= 3 && std < 2) {
-      confidence = "alta";
-      confidenceScore = 90;
-    } else if (filtered.length >= 2 && std < 4) {
-      confidence = "media";
-      confidenceScore = 70;
-    } else {
-      confidence = "baja";
-      confidenceScore = 40;
+    } catch (e) {
+      console.error("SMN error:", e);
     }
 
     // -----------------------------
-    // RESPUESTA FINAL
+    // STATUS
+    // -----------------------------
+    const status = {
+      openweather: owTemp != null ? "ok" : "fail",
+      weatherbit: wbTemp != null ? "ok" : "fail",
+      openmeteo: omTemp != null ? "ok" : "fail",
+      smn: smnTemp != null ? "ok" : "fail"
+    };
+
+    // -----------------------------
+    // CONSENSO SIMPLE
+    // -----------------------------
+    const temps = [owTemp, wbTemp, omTemp, smnTemp].filter(t => t != null);
+
+    const average = temps.length
+      ? (temps.reduce((a, b) => a + b, 0) / temps.length)
+      : null;
+
+    const consensus = average ? Number(average.toFixed(1)) : null;
+
+    // -----------------------------
+    // RESULT
     // -----------------------------
     res.status(200).json({
       city,
-      sources,
+      coord: {
+        lat: baseLat,
+        lon: baseLon
+      },
+      sources: {
+        openweather: { temp: owTemp, desc: owDesc },
+        weatherbit: { temp: wbTemp, desc: wbDesc },
+        openmeteo: { temp: omTemp, desc: omDesc },
+        smn: { temp: smnTemp, desc: smnDesc }
+      },
+      status,
+      average: average ? average.toFixed(1) : null,
       consensus,
-      confidence,
-      confidenceScore
+      confidence: temps.length >= 3 ? "alta" : "media",
+      note: temps.length < 2 ? "Pocas fuentes disponibles" : ""
     });
 
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    res.status(500).json({
+      error: "Error general",
+      detail: error.message
+    });
   }
 }
