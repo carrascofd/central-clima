@@ -3,206 +3,154 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Clima 360</title>
+
+<title>Clima 360 PRO</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-
 body {
-  margin: 0;
+  margin:0;
   font-family: 'Segoe UI', sans-serif;
-  background: #0b1220;
-  color: white;
+  background:#0f172a;
+  color:white;
 }
 
-header {
-  padding: 15px;
-  font-size: 20px;
-  font-weight: bold;
-  background: #111a2e;
+/* HEADER */
+.header {
+  padding:15px;
+  display:flex;
+  gap:10px;
+  justify-content:center;
 }
 
+input {
+  padding:10px;
+  border-radius:8px;
+  border:none;
+  width:200px;
+}
+
+button {
+  padding:10px 15px;
+  border:none;
+  border-radius:8px;
+  background:#3b82f6;
+  color:white;
+  cursor:pointer;
+}
+
+/* MAIN */
 .container {
-  padding: 15px;
-}
-
-/* BUSCADOR */
-.search {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.search input {
-  flex: 1;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-}
-
-.search button {
-  padding: 10px 15px;
-  border-radius: 8px;
-  border: none;
-  background: #2563eb;
-  color: white;
-  cursor: pointer;
-}
-
-/* GRID PRINCIPAL */
-.main {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 15px;
+  max-width:1100px;
+  margin:auto;
+  padding:15px;
 }
 
 /* CARD PRINCIPAL */
-.card {
-  background: #1e293b;
-  padding: 20px;
-  border-radius: 16px;
+.main-card {
+  background:#1e293b;
+  padding:20px;
+  border-radius:15px;
+  margin-bottom:20px;
 }
 
 .temp {
-  font-size: 48px;
-  font-weight: bold;
+  font-size:48px;
+  font-weight:bold;
 }
 
-.conf {
-  color: orange;
+.desc {
+  opacity:.8;
 }
 
-/* METRICAS */
-.metrics {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
+/* GRID */
+.grid {
+  display:grid;
+  grid-template-columns: 1fr 350px;
+  gap:15px;
 }
 
-.metric {
-  flex: 1;
-  background: #111a2e;
-  padding: 10px;
-  border-radius: 10px;
-  text-align: center;
+.info-box {
+  background:#1e293b;
+  padding:15px;
+  border-radius:12px;
 }
 
 /* MAPA */
 #map {
-  height: 250px;
-  border-radius: 16px;
+  height:250px;
+  border-radius:12px;
 }
 
 /* TABS */
 .tabs {
-  margin-top: 20px;
+  display:flex;
+  margin-top:20px;
 }
 
-.tab-buttons {
-  display: flex;
-  gap: 10px;
+.tab {
+  flex:1;
+  padding:10px;
+  text-align:center;
+  background:#1e293b;
+  cursor:pointer;
+  border-right:1px solid #334155;
 }
 
-.tab-buttons button {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  border-radius: 8px;
-  background: #1e293b;
-  color: white;
-  cursor: pointer;
-}
-
-.tab-buttons button.active {
-  background: #2563eb;
+.tab.active {
+  background:#3b82f6;
 }
 
 .tab-content {
-  margin-top: 10px;
-  background: #1e293b;
-  padding: 15px;
-  border-radius: 10px;
+  background:#1e293b;
+  padding:15px;
+  border-radius:0 0 12px 12px;
 }
 
-.hidden {
-  display: none;
-}
-
-/* MOBILE */
-@media (max-width: 768px) {
-  .main {
-    grid-template-columns: 1fr;
-  }
-}
+/* STATUS */
+.ok { color:#22c55e; }
+.fail { color:#ef4444; }
 
 </style>
 </head>
 
 <body>
 
-<header>?? Clima 360</header>
+<div class="header">
+  <input id="city" placeholder="Ej: San Luis"/>
+  <button onclick="getWeather()">Consultar</button>
+  <button onclick="getLocation()">??</button>
+</div>
 
 <div class="container">
 
-  <!-- BUSCADOR -->
-  <div class="search">
-    <input id="cityInput" placeholder="Ej: San Luis"/>
-    <button onclick="searchCity()">Consultar</button>
-    <button onclick="useMyLocation()">??</button>
+  <!-- MAIN -->
+  <div class="main-card">
+    <div id="temp" class="temp">-- °„C</div>
+    <div id="desc" class="desc">---</div>
+    <div id="confidence"></div>
   </div>
 
   <!-- GRID -->
-  <div class="main">
-
-    <!-- INFO -->
-    <div class="card">
-      <div id="location">-</div>
-
-      <div class="temp" id="temp">-- °„C</div>
-      <div id="desc">-</div>
-
-      <div class="conf" id="confidence"></div>
-
-      <div class="metrics">
-        <div class="metric" id="wind">?? --</div>
-        <div class="metric" id="humidity">?? --</div>
-        <div class="metric" id="pressure">?? --</div>
-      </div>
+  <div class="grid">
+    <div class="info-box">
+      <h3>Detalles</h3>
+      <div id="details"></div>
     </div>
 
-    <!-- MAPA -->
     <div id="map"></div>
-
   </div>
 
-  <!-- TABS APIs -->
+  <!-- TABS -->
   <div class="tabs">
-
-    <div class="tab-buttons">
-      <button onclick="showTab('ow')" class="active">OpenWeather</button>
-      <button onclick="showTab('wb')">Weatherbit</button>
-      <button onclick="showTab('om')">OpenMeteo</button>
-      <button onclick="showTab('smn')">SMN</button>
-    </div>
-
-    <div id="ow" class="tab-content">
-      <div id="owData"></div>
-    </div>
-
-    <div id="wb" class="tab-content hidden">
-      <div id="wbData"></div>
-    </div>
-
-    <div id="om" class="tab-content hidden">
-      <div id="omData"></div>
-    </div>
-
-    <div id="smn" class="tab-content hidden">
-      <div id="smnData"></div>
-    </div>
-
+    <div class="tab active" onclick="showTab('ow')">OpenWeather</div>
+    <div class="tab" onclick="showTab('wb')">Weatherbit</div>
+    <div class="tab" onclick="showTab('om')">OpenMeteo</div>
+    <div class="tab" onclick="showTab('smn')">SMN</div>
   </div>
+
+  <div id="tab-content" class="tab-content"></div>
 
 </div>
 
@@ -212,94 +160,107 @@ header {
 
 let map;
 let marker;
+let dataGlobal = null;
 
-function initMap(lat = -33.3, lon = -66.3) {
-  map = L.map('map').setView([lat, lon], 7);
+function initMap(lat, lon) {
+  if (!map) {
+    map = L.map('map').setView([lat, lon], 10);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:'? OpenStreetMap'
+    }).addTo(map);
 
-  marker = L.marker([lat, lon]).addTo(map);
+    marker = L.marker([lat, lon]).addTo(map);
+  } else {
+    map.setView([lat, lon], 10);
+    marker.setLatLng([lat, lon]);
+  }
 }
 
-async function searchCity() {
-  const city = document.getElementById("cityInput").value;
+async function getWeather(lat=null, lon=null) {
+  const city = document.getElementById("city").value;
 
-  const res = await fetch(`/api/weather?city=${city}`);
+  let url = "/api/weather";
+
+  if (lat && lon) {
+    url += `?lat=${lat}&lon=${lon}`;
+  } else {
+    url += `?city=${city}`;
+  }
+
+  const res = await fetch(url);
   const data = await res.json();
 
-  updateUI(data);
-}
+  dataGlobal = data;
 
-function useMyLocation() {
-  navigator.geolocation.getCurrentPosition(pos => {
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-
-    fetch(`/api/weather?lat=${lat}&lon=${lon}`)
-      .then(r => r.json())
-      .then(updateUI);
-  });
-}
-
-function updateUI(data) {
-
-  document.getElementById("location").innerText = data.city;
-
-  document.getElementById("temp").innerHTML =
-    `${data.consensus ?? "--"} &deg;C`;
+  document.getElementById("temp").innerText =
+    (data.consensus ?? "--") + " °„C";
 
   document.getElementById("desc").innerText =
-    data.sources.openweather.desc || "";
+    data.note || "Sin observaciones";
 
-  document.getElementById("confidence").innerText =
-    `Confianza: ${data.confidence}`;
+  document.getElementById("confidence").innerHTML =
+    "Confianza: " + (data.confidence || "-");
 
-  document.getElementById("wind").innerText =
-    `?? ${data.sources.smn?.wind ?? "-"} km/h`;
+  document.getElementById("details").innerHTML = `
+    Promedio APIs: ${data.average ?? "-"} °„C <br>
+    Fuentes activas: ${Object.values(data.status || {}).filter(s => s==="ok").length}
+  `;
 
-  document.getElementById("humidity").innerText =
-    `?? ${data.sources.smn?.humidity ?? "-"}%`;
+  if (data.coord) {
+    initMap(data.coord.lat, data.coord.lon);
+  }
 
-  document.getElementById("pressure").innerText =
-    `?? ${data.sources.openweather?.pressure ?? "-"} hPa`;
-
-  // MAPA
-  const lat = data.sources.openweather.lat;
-  const lon = data.sources.openweather.lon;
-
-  map.setView([lat, lon], 8);
-
-  if (marker) map.removeLayer(marker);
-
-  marker = L.marker([lat, lon]).addTo(map);
-
-  // TABS
-  document.getElementById("owData").innerHTML =
-    `${data.sources.openweather.temp} °„C - ${data.sources.openweather.desc}`;
-
-  document.getElementById("wbData").innerHTML =
-    `${data.sources.weatherbit.temp ?? "-"} °„C`;
-
-  document.getElementById("omData").innerHTML =
-    `${data.sources.openmeteo?.temp ?? "-"} °„C`;
-
-  document.getElementById("smnData").innerHTML =
-    `${data.sources.smn.temp ?? "-"} °„C <br>${data.sources.smn.desc}`;
+  showTab("ow");
 }
 
 function showTab(tab) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
 
-  document.querySelectorAll(".tab-content").forEach(t => t.classList.add("hidden"));
+  document.querySelectorAll(".tab").forEach(t => {
+    if (t.innerText.toLowerCase().includes(tab)) {
+      t.classList.add("active");
+    }
+  });
 
-  document.getElementById(tab).classList.remove("hidden");
+  if (!dataGlobal) return;
 
-  document.querySelectorAll(".tab-buttons button")
-    .forEach(b => b.classList.remove("active"));
+  const src = dataGlobal.sources;
 
-  event.target.classList.add("active");
+  let html = "";
+
+  if (tab === "ow") {
+    html = renderSource("OpenWeather", src.openweather, dataGlobal.status.openweather);
+  }
+  if (tab === "wb") {
+    html = renderSource("Weatherbit", src.weatherbit, dataGlobal.status.weatherbit);
+  }
+  if (tab === "om") {
+    html = renderSource("OpenMeteo", src.openmeteo, dataGlobal.status.openmeteo);
+  }
+  if (tab === "smn") {
+    html = renderSource("SMN", src.smn, dataGlobal.status.smn);
+  }
+
+  document.getElementById("tab-content").innerHTML = html;
 }
 
-initMap();
+function renderSource(name, src, status) {
+  return `
+    <h3>${name}</h3>
+    <p>Temperatura: ${src?.temp ?? "-"} °„C</p>
+    <p>${src?.desc ?? ""}</p>
+    <p class="${status === "ok" ? "ok" : "fail"}">
+      Estado: ${status}
+    </p>
+  `;
+}
+
+function getLocation() {
+  navigator.geolocation.getCurrentPosition(pos => {
+    getWeather(pos.coords.latitude, pos.coords.longitude);
+  });
+}
 
 </script>
 
