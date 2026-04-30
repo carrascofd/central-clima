@@ -2,69 +2,124 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Clima 360 PRO</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Central de Clima</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-body { font-family: Arial; background:#0f172a; color:white; margin:0; }
-.header { padding:15px; text-align:center; }
-input, button { padding:10px; border-radius:8px; border:none; }
-.container { max-width:1000px; margin:auto; padding:15px; }
-.card { background:#1e293b; padding:15px; border-radius:12px; margin-bottom:15px; }
-.grid { display:grid; grid-template-columns:1fr 300px; gap:10px; }
-#map { height:250px; border-radius:12px; }
-.tabs { display:flex; margin-top:10px; }
-.tab { flex:1; padding:10px; background:#1e293b; cursor:pointer; text-align:center; }
-.tab.active { background:#3b82f6; }
+body {
+  margin:0;
+  font-family: Arial;
+  background:#0f172a;
+  color:white;
+}
+
+.header {
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  padding:20px;
+}
+
+input {
+  padding:10px;
+  border-radius:8px;
+  border:none;
+}
+
+button {
+  padding:10px 15px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#3b82f6;
+  color:white;
+}
+
+.container {
+  max-width:1100px;
+  margin:auto;
+}
+
+.main-card {
+  background:#1e293b;
+  padding:20px;
+  border-radius:12px;
+  margin-bottom:20px;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns: 2fr 1fr;
+  gap:20px;
+}
+
+#map {
+  height:250px;
+  border-radius:12px;
+}
+
+.api-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+  gap:15px;
+  margin-top:20px;
+}
+
+.api-card {
+  background:#1e293b;
+  padding:15px;
+  border-radius:10px;
+}
+
 .ok { color:#22c55e; }
-.fail { color:#ef4444; }
+.error { color:#ef4444; }
+
+h1 { margin:0; }
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <input id="city" placeholder="Ciudad">
-  <button onclick="getWeather()">Consultar</button>
-  <button onclick="getLocation()">??</button>
+  <input id="city" placeholder="Ciudad"/>
+  <button onclick="buscar()">Consultar</button>
 </div>
 
 <div class="container">
 
-<div class="card">
-  <h1 id="temp">-- °„C</h1>
-  <div id="desc"></div>
-  <div id="confidence"></div>
-</div>
+  <div class="main-card">
+    <h1 id="temp">-- °„C</h1>
+    <p id="confidence"></p>
+  </div>
 
-<div class="grid">
-  <div class="card" id="details"></div>
-  <div id="map"></div>
-</div>
+  <div class="grid">
+    <div class="main-card">
+      <p id="avg"></p>
+      <p id="sources"></p>
+    </div>
 
-<div class="tabs">
-  <div class="tab active" onclick="showTab('openweather')">OW</div>
-  <div class="tab" onclick="showTab('weatherbit')">WB</div>
-  <div class="tab" onclick="showTab('openmeteo')">OM</div>
-  <div class="tab" onclick="showTab('smn')">SMN</div>
-</div>
+    <div id="map"></div>
+  </div>
 
-<div class="card" id="tabContent"></div>
+  <div class="api-grid" id="apis"></div>
 
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-const DEG = "\u00B0";
-let map, marker, dataGlobal;
+let map;
+let marker;
 
-function initMap(lat, lon){
-  if(!map){
+function initMap(lat, lon) {
+  if (!map) {
     map = L.map('map').setView([lat, lon], 10);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '? OpenStreetMap'
+    }).addTo(map);
+
     marker = L.marker([lat, lon]).addTo(map);
   } else {
     map.setView([lat, lon], 10);
@@ -72,57 +127,97 @@ function initMap(lat, lon){
   }
 }
 
-async function getWeather(lat=null, lon=null){
-  let url = "/api/weather";
+// -----------------------------
+// AUTO GEOLOCALIZACI®ÆN
+// -----------------------------
+window.onload = () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
 
-  if(lat && lon) url += `?lat=${lat}&lon=${lon}`;
-  else url += `?city=${document.getElementById("city").value}`;
+      cargar(lat, lon);
+    }, () => {
+      console.warn("No se pudo obtener ubicaci®Æn");
+    });
+  }
+};
 
-  const res = await fetch(url);
-  const data = await res.json();
+// -----------------------------
+// BUSCAR POR INPUT
+// -----------------------------
+function buscar() {
+  const city = document.getElementById("city").value;
+  if (!city) return;
 
-  dataGlobal = data;
+  fetch(`/api/weather?city=${city}`)
+    .then(r => r.json())
+    .then(render);
+}
 
+// -----------------------------
+// CARGAR POR COORDENADAS
+// -----------------------------
+function cargar(lat, lon) {
+  fetch(`/api/weather?lat=${lat}&lon=${lon}`)
+    .then(r => r.json())
+    .then(data => {
+      render(data);
+      initMap(lat, lon);
+    });
+}
+
+// -----------------------------
+// RENDER
+// -----------------------------
+function render(data) {
+
+  // temperatura principal
   document.getElementById("temp").innerText =
-    (data.consensus ?? "--") + " " + DEG + "C";
+    data.consensus != null ? `${data.consensus} °„C` : "-- °„C";
 
-  document.getElementById("desc").innerText = data.note || "";
   document.getElementById("confidence").innerText =
-    "Confianza: " + data.confidence;
+    `Confianza: ${data.confidence}`;
 
-  document.getElementById("details").innerHTML =
-    `Promedio: ${data.average ?? "-"} ${DEG}C <br>
-     Fuentes OK: ${Object.values(data.status).filter(s=>s==="ok").length}`;
+  document.getElementById("avg").innerText =
+    `Promedio: ${data.average ?? "-" } °„C`;
 
-  if(data.coord?.lat) initMap(data.coord.lat, data.coord.lon);
+  const active = Object.values(data.sources)
+    .filter(s => s.temp != null).length;
 
-  showTab("openweather");
-}
+  document.getElementById("sources").innerText =
+    `Fuentes OK: ${active}`;
 
-function showTab(name){
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  // -----------------------------
+  // APIs (TODAS VISIBLES)
+  // -----------------------------
+  const container = document.getElementById("apis");
+  container.innerHTML = "";
 
-  document.querySelectorAll(".tab").forEach(t=>{
-    if(t.innerText.toLowerCase().includes(name.substring(0,2))) {
-      t.classList.add("active");
-    }
-  });
+  const names = {
+    openweather: "OpenWeather",
+    weatherbit: "Weatherbit",
+    openmeteo: "Open-Meteo",
+    smn: "SMN (Argentina)"
+  };
 
-  const s = dataGlobal.sources[name];
-  const status = dataGlobal.status[name];
+  for (const key in data.sources) {
+    const s = data.sources[key];
 
-  document.getElementById("tabContent").innerHTML = `
-    <h3>${name}</h3>
-    <p>Temp: ${s?.temp ?? "-"} ${DEG}C</p>
-    <p>${s?.desc ?? ""}</p>
-    <p class="${status==="ok"?"ok":"fail"}">Estado: ${status}</p>
-  `;
-}
+    const div = document.createElement("div");
+    div.className = "api-card";
 
-function getLocation(){
-  navigator.geolocation.getCurrentPosition(pos=>{
-    getWeather(pos.coords.latitude, pos.coords.longitude);
-  });
+    div.innerHTML = `
+      <h3>${names[key] || key}</h3>
+      <p>Temp: ${s.temp != null ? s.temp + " °„C" : "-"}</p>
+      <p>${s.desc || ""}</p>
+      <p class="${s.temp != null ? "ok" : "error"}">
+        Estado: ${s.temp != null ? "ok" : "sin datos"}
+      </p>
+    `;
+
+    container.appendChild(div);
+  }
 }
 </script>
 
