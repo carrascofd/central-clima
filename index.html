@@ -2,80 +2,25 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <title>Central de Clima</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-body {
-  margin:0;
-  font-family: Arial;
-  background:#0f172a;
-  color:white;
-}
-
-.header {
-  display:flex;
-  justify-content:center;
-  gap:10px;
-  padding:20px;
-}
-
-input {
-  padding:10px;
-  border-radius:8px;
-  border:none;
-}
-
-button {
-  padding:10px 15px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  background:#3b82f6;
-  color:white;
-}
-
-.container {
-  max-width:1100px;
-  margin:auto;
-}
-
-.main-card {
-  background:#1e293b;
-  padding:20px;
-  border-radius:12px;
-  margin-bottom:20px;
-}
-
-.grid {
-  display:grid;
-  grid-template-columns: 2fr 1fr;
-  gap:20px;
-}
-
-#map {
-  height:250px;
-  border-radius:12px;
-}
-
-.api-grid {
-  display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
-  gap:15px;
-  margin-top:20px;
-}
-
-.api-card {
-  background:#1e293b;
-  padding:15px;
-  border-radius:10px;
-}
-
+body { margin:0; font-family:Arial; background:#0f172a; color:white; }
+.header { display:flex; justify-content:center; gap:10px; padding:20px; }
+input { padding:10px; border-radius:8px; border:none; }
+button { padding:10px 15px; border:none; border-radius:8px; background:#3b82f6; color:white; cursor:pointer; }
+.container { max-width:1100px; margin:auto; }
+.main-card { background:#1e293b; padding:20px; border-radius:12px; margin-bottom:20px; }
+.grid { display:grid; grid-template-columns: 2fr 1fr; gap:20px; }
+#map { height:250px; border-radius:12px; }
+.api-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:15px; margin-top:20px; }
+.api-card { background:#1e293b; padding:15px; border-radius:10px; }
 .ok { color:#22c55e; }
 .error { color:#ef4444; }
-
-h1 { margin:0; }
 </style>
 </head>
 
@@ -89,7 +34,7 @@ h1 { margin:0; }
 <div class="container">
 
   <div class="main-card">
-    <h1 id="temp">-- °„C</h1>
+    <h1 id="temp">-- \u00B0C</h1>
     <p id="confidence"></p>
   </div>
 
@@ -98,7 +43,6 @@ h1 { margin:0; }
       <p id="avg"></p>
       <p id="sources"></p>
     </div>
-
     <div id="map"></div>
   </div>
 
@@ -109,17 +53,12 @@ h1 { margin:0; }
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-let map;
-let marker;
+let map, marker;
 
 function initMap(lat, lon) {
   if (!map) {
     map = L.map('map').setView([lat, lon], 10);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '? OpenStreetMap'
-    }).addTo(map);
-
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     marker = L.marker([lat, lon]).addTo(map);
   } else {
     map.setView([lat, lon], 10);
@@ -128,17 +67,13 @@ function initMap(lat, lon) {
 }
 
 window.onload = () => {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(pos => {
-      cargar(pos.coords.latitude, pos.coords.longitude);
-    });
-  }
+  navigator.geolocation.getCurrentPosition(pos => {
+    cargar(pos.coords.latitude, pos.coords.longitude);
+  });
 };
 
 function buscar() {
   const city = document.getElementById("city").value;
-  if (!city) return;
-
   fetch(`/api/weather?city=${city}`)
     .then(r => r.json())
     .then(render);
@@ -155,20 +90,18 @@ function cargar(lat, lon) {
 
 function render(data) {
 
-  // TEMP PRINCIPAL
   document.getElementById("temp").innerHTML =
-    data.consensus != null ? data.consensus + " °„C" : "-- °„C";
+    (data.consensus ?? "--") + " \u00B0C";
 
   document.getElementById("confidence").innerText =
-    "Confianza: " + (data.confidence || "-");
+    "Confianza: " + data.confidence;
 
-  // MODELOS
   document.getElementById("avg").innerHTML =
-    "Modelo promedio: " + (data.models?.average ?? "-") + " °„C";
+    "Modelo promedio: " + (data.models.average ?? "-") + " \u00B0C";
 
   document.getElementById("sources").innerText =
     "Modelos activos: " +
-    Object.values(data.models?.sources || {}).filter(s => s.temp != null).length;
+    Object.values(data.models.sources).filter(s => s.temp != null).length;
 
   const container = document.getElementById("apis");
   container.innerHTML = "";
@@ -179,56 +112,44 @@ function render(data) {
     openweather: "OpenWeather"
   };
 
-  // ?? MODELOS
-  for (const key in (data.models?.sources || {})) {
+  for (const key in data.models.sources) {
     const s = data.models.sources[key];
 
     container.innerHTML += `
       <div class="api-card">
-        <h3>${names[key] || key} (modelo)</h3>
-        <p>${s.temp ?? "-"} °„C</p>
-        <p class="${s.status === "error" ? "error" : "ok"}">
-          ${s.status || "ok"}
-        </p>
+        <h3>${names[key]}</h3>
+        <p>${s.temp ?? "-"} \u00B0C</p>
+        <p class="${s.status === "error" ? "error" : "ok"}">${s.status}</p>
       </div>
     `;
   }
 
-  // ?? SMN Arg
-  const smn = data.observation?.smn || {};
+  const smn = data.observation.smn;
 
   container.innerHTML += `
     <div class="api-card">
-      <h3>SMN (real)</h3>
-      <p>${smn.temp ?? "-"} °„C</p>
-      <p>${smn.station || "Sin datos actualizados"}</p>
-      <p class="${smn.status === "error" ? "error" : "ok"}">
-        ${smn.status || "ok"}
-      </p>
+      <h3>SMN</h3>
+      <p>${smn.temp ?? "-"} \u00B0C</p>
+      <p>${smn.station}</p>
+      <p class="${smn.status === "error" ? "error" : "ok"}">${smn.status}</p>
     </div>
   `;
 
-  // ?? METAR
-  const metar = data.observation?.metar || {};
+  const metar = data.observation.metar;
 
   container.innerHTML += `
     <div class="api-card">
-      <h3>METAR (aeropuerto)</h3>
-      <p>${metar.temp ?? "-"} °„C</p>
-      <p>${metar.station || "Sin aeropuerto cercano"}</p>
-      <p class="${metar.status === "error" ? "error" : "ok"}">
-        ${metar.status || "ok"}
-      </p>
+      <h3>METAR</h3>
+      <p>${metar.temp ?? "-"} \u00B0C</p>
+      <p>${metar.station}</p>
+      <p class="${metar.status === "error" ? "error" : "ok"}">${metar.status}</p>
     </div>
   `;
-
-  // ?? Meteostat
-  const meteostat = data.extra?.meteostat || {};
 
   container.innerHTML += `
     <div class="api-card">
       <h3>Meteostat</h3>
-      <p>${meteostat.desc || "Sin datos"}</p>
+      <p>${data.extra.meteostat.desc}</p>
     </div>
   `;
 }
