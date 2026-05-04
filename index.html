@@ -1,34 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Central de Clima</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+body {
+  margin:0;
+  font-family: Arial;
+  background:#0f172a;
+  color:white;
+}
+
+.header {
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  padding:20px;
+}
+
+input {
+  padding:10px;
+  border-radius:8px;
+  border:none;
+}
+
+button {
+  padding:10px 15px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#3b82f6;
+  color:white;
+}
+
+.container {
+  max-width:1100px;
+  margin:auto;
+}
+
+.main-card {
+  background:#1e293b;
+  padding:20px;
+  border-radius:12px;
+  margin-bottom:20px;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns: 2fr 1fr;
+  gap:20px;
+}
+
+#map {
+  height:250px;
+  border-radius:12px;
+}
+
+.api-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+  gap:15px;
+  margin-top:20px;
+}
+
+.api-card {
+  background:#1e293b;
+  padding:15px;
+  border-radius:10px;
+}
+
+.ok { color:#22c55e; }
+.error { color:#ef4444; }
+
+h1 { margin:0; }
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <input id="city" placeholder="Ciudad"/>
+  <button onclick="buscar()">Consultar</button>
+</div>
+
+<div class="container">
+
+  <div class="main-card">
+    <h1 id="temp">-- °„C</h1>
+    <p id="confidence"></p>
+  </div>
+
+  <div class="grid">
+    <div class="main-card">
+      <p id="avg"></p>
+      <p id="sources"></p>
+    </div>
+
+    <div id="map"></div>
+  </div>
+
+  <div class="api-grid" id="apis"></div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+let map;
+let marker;
+
+function initMap(lat, lon) {
+  if (!map) {
+    map = L.map('map').setView([lat, lon], 10);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '? OpenStreetMap'
+    }).addTo(map);
+
+    marker = L.marker([lat, lon]).addTo(map);
+  } else {
+    map.setView([lat, lon], 10);
+    marker.setLatLng([lat, lon]);
+  }
+}
+
+window.onload = () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      cargar(pos.coords.latitude, pos.coords.longitude);
+    });
+  }
+};
+
+function buscar() {
+  const city = document.getElementById("city").value;
+  if (!city) return;
+
+  fetch(`/api/weather?city=${city}`)
+    .then(r => r.json())
+    .then(render);
+}
+
+function cargar(lat, lon) {
+  fetch(`/api/weather?lat=${lat}&lon=${lon}`)
+    .then(r => r.json())
+    .then(data => {
+      render(data);
+      initMap(lat, lon);
+    });
+}
+
 function render(data) {
 
+  // TEMP PRINCIPAL
   document.getElementById("temp").innerHTML =
-    data.consensus != null ? `${data.consensus} &deg;C` : "-- &deg;C";
+    data.consensus != null ? data.consensus + " °„C" : "-- °„C";
 
   document.getElementById("confidence").innerText =
-    `Confianza: ${data.confidence}`;
+    "Confianza: " + data.confidence;
 
+  // MODELOS
   document.getElementById("avg").innerHTML =
-    `Modelo promedio: ${data.models.average ?? "-"} &deg;C`;
+    "Modelo promedio: " + (data.models.average ?? "-") + " °„C";
 
   document.getElementById("sources").innerText =
-    `Modelos activos: ${Object.values(data.models.sources).filter(s => s.temp != null).length}`;
+    "Modelos activos: " +
+    Object.values(data.models.sources).filter(s => s.temp != null).length;
 
   const container = document.getElementById("apis");
   container.innerHTML = "";
 
-  // ?? MODELOS
   const names = {
     openmeteo: "Open-Meteo",
-    metno: "Met.no",
+    metno: "MET Norway",
     openweather: "OpenWeather"
   };
 
+  // ?? MODELOS
   for (const key in data.models.sources) {
     const s = data.models.sources[key];
 
     container.innerHTML += `
       <div class="api-card">
-        <h3>${names[key]} (modelo)</h3>
-        <p>${s.temp ?? "-"} &deg;C</p>
+        <h3>${names[key] || key} (modelo)</h3>
+        <p>${s.temp ?? "-"} °„C</p>
+        <p class="${s.status === "ok" ? "ok" : "error"}">
+          ${s.status}
+        </p>
       </div>
     `;
   }
@@ -37,8 +198,11 @@ function render(data) {
   container.innerHTML += `
     <div class="api-card">
       <h3>SMN (real)</h3>
-      <p>${data.observation.smn.temp ?? "-"} &deg;C</p>
-      <p>${data.observation.smn.station}</p>
+      <p>${data.observation.smn.temp ?? "-"} °„C</p>
+      <p>${data.observation.smn.station ?? ""}</p>
+      <p class="${data.observation.smn.status === "ok" ? "ok" : "error"}">
+        ${data.observation.smn.status}
+      </p>
     </div>
   `;
 
@@ -46,8 +210,11 @@ function render(data) {
   container.innerHTML += `
     <div class="api-card">
       <h3>METAR (aeropuerto)</h3>
-      <p>${data.observation.metar.temp ?? "-"} &deg;C</p>
-      <p>${data.observation.metar.station}</p>
+      <p>${data.observation.metar.temp ?? "-"} °„C</p>
+      <p>${data.observation.metar.station ?? ""}</p>
+      <p class="${data.observation.metar.status === "ok" ? "ok" : "error"}">
+        ${data.observation.metar.status}
+      </p>
     </div>
   `;
 
@@ -59,3 +226,7 @@ function render(data) {
     </div>
   `;
 }
+</script>
+
+</body>
+</html>
