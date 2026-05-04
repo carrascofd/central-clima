@@ -1,47 +1,73 @@
 <script>
 function render(data) {
 
+  if (!data) return;
+
+  // -----------------------------
+  // TEMPERATURA PRINCIPAL
+  // -----------------------------
   document.getElementById("temp").innerHTML =
     data.consensus != null ? `${data.consensus} &deg;C` : "-- &deg;C";
 
   document.getElementById("confidence").innerText =
-    `Confianza: ${data.confidence}`;
+    `Confianza: ${data.confidence ?? "-"}`;
 
   document.getElementById("avg").innerHTML =
-    `Modelo promedio: ${data.models.average ?? "-"} &deg;C`;
+    `Modelo promedio: ${data.models?.average ?? "-"} &deg;C`;
+
+  // -----------------------------
+  // CONTEO FUENTES
+  // -----------------------------
+  const modelSources = data.models?.sources || {};
+
+  const activeModels = Object.values(modelSources)
+    .filter(s => s && s.temp != null).length;
 
   document.getElementById("sources").innerText =
-    `Modelos activos: ${Object.values(data.models.sources).filter(s => s.temp != null).length}`;
+    `Modelos activos: ${activeModels}`;
 
+  // -----------------------------
+  // RENDER APIs
+  // -----------------------------
   const container = document.getElementById("apis");
   container.innerHTML = "";
 
+  const names = {
+    openmeteo: "Open-Meteo",
+    metno: "Met.no",
+    openweather: "OpenWeather"
+  };
+
   // ?? MODELOS
-  for (const key in data.models.sources) {
-    const s = data.models.sources[key];
+  for (const key in modelSources) {
+    const s = modelSources[key];
 
     container.innerHTML += `
       <div class="api-card">
-        <h3>${key.toUpperCase()} (modelo)</h3>
-        <p>${s.temp ?? "-"} &deg;C</p>
+        <h3>${names[key] || key} (modelo)</h3>
+        <p>${s?.temp != null ? s.temp + " &deg;C" : "-"}</p>
       </div>
     `;
   }
 
   // ?? SMN
+  const smn = data.observation?.smn;
+
   container.innerHTML += `
     <div class="api-card">
       <h3>SMN (observaci¨®n real)</h3>
-      <p>${data.observation.smn.temp ?? "-"} &deg;C</p>
-      <p>${data.observation.smn.station ?? ""}</p>
+      <p>${smn?.temp != null ? smn.temp + " &deg;C" : "-"}</p>
+      <p>${smn?.station ?? ""}</p>
     </div>
   `;
 
-  // ?? Meteostat
+  // ?? METEOSTAT
+  const meteostat = data.extra?.meteostat;
+
   container.innerHTML += `
     <div class="api-card">
       <h3>Meteostat</h3>
-      <p>${data.extra.meteostat.desc}</p>
+      <p>${meteostat?.desc ?? "Sin datos"}</p>
     </div>
   `;
 }
