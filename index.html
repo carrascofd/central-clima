@@ -160,15 +160,15 @@ function render(data) {
     data.consensus != null ? data.consensus + " °„C" : "-- °„C";
 
   document.getElementById("confidence").innerText =
-    "Confianza: " + data.confidence;
+    "Confianza: " + (data.confidence || "-");
 
   // MODELOS
   document.getElementById("avg").innerHTML =
-    "Modelo promedio: " + (data.models.average ?? "-") + " °„C";
+    "Modelo promedio: " + (data.models?.average ?? "-") + " °„C";
 
   document.getElementById("sources").innerText =
     "Modelos activos: " +
-    Object.values(data.models.sources).filter(s => s.temp != null).length;
+    Object.values(data.models?.sources || {}).filter(s => s.temp != null).length;
 
   const container = document.getElementById("apis");
   container.innerHTML = "";
@@ -180,49 +180,55 @@ function render(data) {
   };
 
   // ?? MODELOS
-  for (const key in data.models.sources) {
+  for (const key in (data.models?.sources || {})) {
     const s = data.models.sources[key];
 
     container.innerHTML += `
       <div class="api-card">
         <h3>${names[key] || key} (modelo)</h3>
         <p>${s.temp ?? "-"} °„C</p>
-        <p class="${s.status === "ok" ? "ok" : "error"}">
-          ${s.status}
+        <p class="${s.status === "error" ? "error" : "ok"}">
+          ${s.status || "ok"}
         </p>
       </div>
     `;
   }
 
   // ?? SMN
+  const smn = data.observation?.smn || {};
+
   container.innerHTML += `
     <div class="api-card">
       <h3>SMN (real)</h3>
-      <p>${data.observation.smn.temp ?? "-"} °„C</p>
-      <p>${data.observation.smn.station ?? ""}</p>
-      <p class="${data.observation.smn.status === "ok" ? "ok" : "error"}">
-        ${data.observation.smn.status}
+      <p>${smn.temp ?? "-"} °„C</p>
+      <p>${smn.station || "Sin datos actualizados"}</p>
+      <p class="${smn.status === "error" ? "error" : "ok"}">
+        ${smn.status || "ok"}
       </p>
     </div>
   `;
 
   // ?? METAR
+  const metar = data.observation?.metar || {};
+
   container.innerHTML += `
     <div class="api-card">
       <h3>METAR (aeropuerto)</h3>
-      <p>${data.observation.metar.temp ?? "-"} °„C</p>
-      <p>${data.observation.metar.station ?? ""}</p>
-      <p class="${data.observation.metar.status === "ok" ? "ok" : "error"}">
-        ${data.observation.metar.status}
+      <p>${metar.temp ?? "-"} °„C</p>
+      <p>${metar.station || "Sin aeropuerto cercano"}</p>
+      <p class="${metar.status === "error" ? "error" : "ok"}">
+        ${metar.status || "ok"}
       </p>
     </div>
   `;
 
   // ?? Meteostat
+  const meteostat = data.extra?.meteostat || {};
+
   container.innerHTML += `
     <div class="api-card">
       <h3>Meteostat</h3>
-      <p>${data.extra.meteostat.desc}</p>
+      <p>${meteostat.desc || "Sin datos"}</p>
     </div>
   `;
 }
