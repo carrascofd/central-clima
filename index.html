@@ -1,138 +1,205 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Central de Clima</title>
-  <style>
-    body {
-      font-family: Arial;
-      background: #0f172a;
-      color: white;
-      text-align: center;
-      padding: 20px;
-    }
+<meta charset="UTF-8">
+<title>Central de Clima</title>
 
-    h1 {
-      margin-bottom: 10px;
-    }
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
-    input {
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      width: 200px;
-    }
-
-    button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      background: #3b82f6;
-      color: white;
-      cursor: pointer;
-      margin-left: 5px;
-    }
-
-    .container {
-      margin-top: 20px;
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 15px;
-    }
-
-    .card {
-      background: #1e293b;
-      padding: 15px;
-      border-radius: 12px;
-      width: 220px;
-      text-align: left;
-    }
-
-    .ok { border-left: 5px solid #22c55e; }
-    .error { border-left: 5px solid #ef4444; }
-    .limit { border-left: 5px solid #f59e0b; }
-
-    .temp {
-      font-size: 24px;
-      font-weight: bold;
-    }
-
-    .avg {
-      margin-top: 20px;
-      font-size: 28px;
-    }
-  </style>
-</head>
-<body>
-
-  <h1>?? Central de Clima</h1>
-
-  <input type="text" id="city" placeholder="Ej: San Luis" />
-  <button onclick="getWeather()">Consultar</button>
-  <button onclick="getLocationWeather()">?? Mi ubicaci®Æn</button>
-
-  <div class="container" id="results"></div>
-
-  <div class="avg" id="average"></div>
-
-<script>
-async function getWeather(lat = null, lon = null) {
-  const city = document.getElementById("city").value || "San Luis";
-
-  let url = `/api/weather?city=${encodeURIComponent(city)}`;
-
-  if (lat && lon) {
-    url += `&lat=${lat}&lon=${lon}`;
-  }
-
-  const res = await fetch(url);
-  const data = await res.json();
-
-  render(data);
+<style>
+body {
+  margin:0;
+  font-family: Arial;
+  background:#0f172a;
+  color:white;
 }
 
-function getLocationWeather() {
-  navigator.geolocation.getCurrentPosition(pos => {
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
+.header {
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  padding:20px;
+}
 
-    getWeather(lat, lon);
-  });
+input {
+  padding:10px;
+  border-radius:8px;
+  border:none;
+}
+
+button {
+  padding:10px 15px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#3b82f6;
+  color:white;
+}
+
+.container {
+  max-width:1100px;
+  margin:auto;
+}
+
+.main-card {
+  background:#1e293b;
+  padding:20px;
+  border-radius:12px;
+  margin-bottom:20px;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns: 2fr 1fr;
+  gap:20px;
+}
+
+#map {
+  height:250px;
+  border-radius:12px;
+}
+
+.api-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+  gap:15px;
+  margin-top:20px;
+}
+
+.api-card {
+  background:#1e293b;
+  padding:15px;
+  border-radius:10px;
+}
+
+.ok { color:#22c55e; }
+.error { color:#ef4444; }
+
+h1 { margin:0; }
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <input id="city" placeholder="Ciudad"/>
+  <button onclick="buscar()">Consultar</button>
+</div>
+
+<div class="container">
+
+  <div class="main-card">
+    <h1 id="temp">-- &deg;C</h1>
+    <p id="confidence"></p>
+  </div>
+
+  <div class="grid">
+    <div class="main-card">
+      <p id="avg"></p>
+      <p id="sources"></p>
+    </div>
+
+    <div id="map"></div>
+  </div>
+
+  <div class="api-grid" id="apis"></div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+let map;
+let marker;
+
+function initMap(lat, lon) {
+  if (!map) {
+    map = L.map('map').setView([lat, lon], 10);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '? OpenStreetMap'
+    }).addTo(map);
+
+    marker = L.marker([lat, lon]).addTo(map);
+  } else {
+    map.setView([lat, lon], 10);
+    marker.setLatLng([lat, lon]);
+  }
+}
+
+window.onload = () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+
+      cargar(lat, lon);
+    });
+  }
+};
+
+function buscar() {
+  const city = document.getElementById("city").value;
+  if (!city) return;
+
+  fetch(`/api/weather?city=${city}`)
+    .then(r => r.json())
+    .then(render);
+}
+
+function cargar(lat, lon) {
+  fetch(`/api/weather?lat=${lat}&lon=${lon}`)
+    .then(r => r.json())
+    .then(data => {
+      render(data);
+      initMap(lat, lon);
+    });
 }
 
 function render(data) {
-  const container = document.getElementById("results");
-  const avgDiv = document.getElementById("average");
 
+  document.getElementById("temp").innerHTML =
+    data.consensus != null ? `${data.consensus} &deg;C` : "-- &deg;C";
+
+  document.getElementById("confidence").innerText =
+    `Confianza: ${data.confidence}`;
+
+  document.getElementById("avg").innerHTML =
+    `Promedio: ${data.average ?? "-" } &deg;C`;
+
+  const active = Object.values(data.sources)
+    .filter(s => s.temp != null).length;
+
+  document.getElementById("sources").innerText =
+    `Fuentes OK: ${active}`;
+
+  const container = document.getElementById("apis");
   container.innerHTML = "";
 
-  const sources = data.sources;
+  const names = {
+    openweather: "OpenWeather",
+    weatherbit: "Weatherbit",
+    openmeteo: "Open-Meteo",
+    smn: "SMN (Argentina)"
+  };
 
-  Object.keys(sources).forEach(key => {
-    const s = sources[key];
+  for (const key in data.sources) {
+    const s = data.sources[key];
 
-    const card = document.createElement("div");
-    card.className = `card ${s.status}`;
+    const div = document.createElement("div");
+    div.className = "api-card";
 
-    card.innerHTML = `
-      <h3>${key.toUpperCase()}</h3>
-      <div class="temp">${s.temp !== null ? s.temp + "°„C" : "--"}</div>
-      <div>${s.desc || ""}</div>
-      <div style="margin-top:5px; font-size:12px;">
-        Estado: ${s.status}
-      </div>
-      <div style="color:#f87171; font-size:11px;">
-        ${s.error || ""}
-      </div>
+    div.innerHTML = `
+      <h3>${names[key] || key}</h3>
+      <p>Temp: ${s.temp != null ? s.temp + " &deg;C" : "-"}</p>
+      <p>${s.desc || ""}</p>
+      <p class="${s.temp != null ? "ok" : "error"}">
+        Estado: ${s.temp != null ? "ok" : "sin datos"}
+      </p>
     `;
 
-    container.appendChild(card);
-  });
-
-  avgDiv.innerHTML = data.average
-    ? `?? Promedio: ${data.average} °„C`
-    : "Sin datos suficientes";
+    container.appendChild(div);
+  }
 }
 </script>
 
