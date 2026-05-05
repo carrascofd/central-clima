@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     let owDesc = "";
 
     // =============================
-    // OPENWEATHER
+    // OPENWEATHER (igual)
     // =============================
     try {
       let owUrl;
@@ -41,12 +41,10 @@ export default async function handler(req, res) {
         }
       }
 
-    } catch (err) {
-      console.error("OpenWeather error:", err);
-    }
+    } catch {}
 
     // =============================
-    // OPEN-METEO
+    // OPEN-METEO (igual)
     // =============================
     let omTemp = null;
 
@@ -61,12 +59,10 @@ export default async function handler(req, res) {
           omTemp = d.current_weather?.temperature ?? null;
         }
       }
-    } catch (err) {
-      console.error("OpenMeteo error:", err);
-    }
+    } catch {}
 
     // =============================
-    // MET NORWAY
+    // MET NORWAY (igual)
     // =============================
     let metnoTemp = null;
 
@@ -84,9 +80,7 @@ export default async function handler(req, res) {
             d.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature ?? null;
         }
       }
-    } catch (err) {
-      console.error("MET Norway error:", err);
-    }
+    } catch {}
 
     const modelTemps = [owTemp, omTemp, metnoTemp].filter(v => v != null);
     const modelAvg = modelTemps.length
@@ -94,7 +88,7 @@ export default async function handler(req, res) {
       : null;
 
     // =============================
-    // SMN (IGUAL)
+    // SMN (igual)
     // =============================
     let smnTemp = null;
     let smnDesc = "Sin datos";
@@ -141,12 +135,10 @@ export default async function handler(req, res) {
         }
       }
 
-    } catch (err) {
-      console.error("SMN error:", err);
-    }
+    } catch {}
 
     // =============================
-    // ✅ METAR CORREGIDO (DISTANCIA REAL)
+    // 🔥 METAR CORRECTO DEFINITIVO
     // =============================
     let metarTemp = null;
     let metarStation = "Sin aeropuerto cercano";
@@ -155,18 +147,32 @@ export default async function handler(req, res) {
       return Math.sqrt((lat1 - lat2) ** 2 + (lon1 - lon2) ** 2) * 111;
     }
 
+    // fallback ICAO
+    const ICAO_MAP = {
+      "san luis": "SAOU",
+      "cordoba": "SACO",
+      "rosario": "SAAR",
+      "buenos aires": "SAEZ",
+      "mendoza": "SAME",
+      "salta": "SASA",
+      "neuquen": "SAZN",
+      "resistencia": "SARE",
+      "formosa": "SARF"
+    };
+
     try {
+      let best = null;
+      let min = Infinity;
+
+      // ===== 1. BUSCAR POR COORDENADAS =====
       if (baseLat && baseLon) {
         const r = await fetch(
-          `https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/300/decoded`,
+          `https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/400/decoded`,
           { headers: { "X-API-Key": CHECKWX_KEY } }
         );
 
         if (r.ok) {
           const d = await r.json();
-
-          let best = null;
-          let min = Infinity;
 
           for (const st of d.data || []) {
 
@@ -187,19 +193,38 @@ export default async function handler(req, res) {
               best = st;
             }
           }
+        }
+      }
 
-          if (best) {
-            metarTemp = best.temperature?.celsius ?? null;
-            metarStation = `${best.station?.name || ""} (${best.icao}) - ${min.toFixed(1)} km`;
+      // ===== 2. FALLBACK ICAO =====
+      if (!best && city) {
+        const icao = ICAO_MAP[city.toLowerCase()];
+
+        if (icao) {
+          const r2 = await fetch(
+            `https://api.checkwx.com/metar/${icao}/decoded`,
+            { headers: { "X-API-Key": CHECKWX_KEY } }
+          );
+
+          if (r2.ok) {
+            const d2 = await r2.json();
+            best = d2.data?.[0] ?? null;
           }
         }
       }
+
+      // ===== 3. RESULTADO FINAL =====
+      if (best) {
+        metarTemp = best.temperature?.celsius ?? null;
+        metarStation = `${best.station?.name || ""} (${best.icao})`;
+      }
+
     } catch (err) {
       console.error("METAR error:", err);
     }
 
     // =============================
-    // METEOSTAT (IGUAL)
+    // METEOSTAT (igual)
     // =============================
     let meteostatTemp = null;
     let meteostatDesc = "Sin datos";
@@ -221,18 +246,15 @@ export default async function handler(req, res) {
 
           if (d.data && d.data.length > 0) {
             const st = d.data[0];
-
             meteostatTemp = st.temp ?? null;
             meteostatDesc = st.name;
           }
         }
       }
-    } catch (err) {
-      console.error("Meteostat error:", err);
-    }
+    } catch {}
 
     // =============================
-    // CONSENSO (IGUAL)
+    // CONSENSO (igual)
     // =============================
     let consensus = modelAvg;
 
@@ -249,9 +271,9 @@ export default async function handler(req, res) {
     }
 
     // =============================
-    // RESULTADO FINAL
+    // RESULTADO
     // =============================
-    const result = {
+    res.status(200).json({
       city,
       models: {
         sources: {
@@ -267,16 +289,9 @@ export default async function handler(req, res) {
         meteostat: { temp: meteostatTemp, desc: meteostatDesc }
       },
       consensus
-    };
-
-    res.status(200).json(result);
+    });
 
   } catch (error) {
-    console.error("ERROR:", error);
-
-    res.status(500).json({
-      error: "Error general",
-      detail: error.message
-    });
+    res.status(500).json({ error: "Error general" });
   }
 }
