@@ -110,13 +110,13 @@ function cargar(lat, lon) {
 
 function render(data) {
 
-  document.getElementById("temp").innerHTML =
+  document.getElementById("temp").textContent =
     data.consensus != null ? `${data.consensus} °„C` : "-- °„C";
 
-  document.getElementById("confidence").innerText =
+  document.getElementById("confidence").textContent =
     "Confianza: " + data.confidence;
 
-  document.getElementById("avg").innerHTML =
+  document.getElementById("avg").textContent =
     "Promedio modelos: " + (data.models.average ?? "-") + " °„C";
 
   const container = document.getElementById("apis");
@@ -124,11 +124,11 @@ function render(data) {
 
   for (const key in data.models.sources) {
     const s = data.models.sources[key];
+
     container.innerHTML += `
       <div class="api-card">
         <b>${key}</b><br>
-        ${s.temp ?? "-"} °„C<br>
-        <span class="${s.status}">${s.status}</span>
+        ${s.temp ?? "-"} °„C
       </div>`;
   }
 
@@ -136,33 +136,15 @@ function render(data) {
     <div class="api-card">
       <b>SMN</b><br>
       ${data.observation.smn.temp ?? "-"} °„C<br>
-      ${data.observation.smn.station}<br>
-      <span class="${data.observation.smn.status}">${data.observation.smn.status}</span>
+      ${data.observation.smn.station}
     </div>
   `;
 
   container.innerHTML += `
     <div class="api-card">
-      <b>METAR NOAA</b><br>
-      ${data.observation.metarNoaa.temp ?? "-"} °„C<br>
-      ${data.observation.metarNoaa.station}<br>
-      <span class="${data.observation.metarNoaa.status}">${data.observation.metarNoaa.status}</span>
-    </div>
-  `;
-
-  container.innerHTML += `
-    <div class="api-card">
-      <b>METAR CheckWX</b><br>
-      ${data.observation.metarCheckwx.temp ?? "-"} °„C<br>
-      ${data.observation.metarCheckwx.station}<br>
-      <span class="${data.observation.metarCheckwx.status}">${data.observation.metarCheckwx.status}</span>
-    </div>
-  `;
-
-  container.innerHTML += `
-    <div class="api-card">
-      <b>Meteostat</b><br>
-      ${data.extra.meteostat.temp ?? "-"} °„C
+      <b>METAR</b><br>
+      ${data.observation.metar.temp ?? "-"} °„C<br>
+      ${data.observation.metar.station}
     </div>
   `;
 }
