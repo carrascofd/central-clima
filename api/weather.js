@@ -153,46 +153,62 @@ export default async function handler(req, res) {
     }
 
     // -----------------------------
-    // ✈️ METAR (CheckWX por coordenadas)
-    // -----------------------------
-    let metar = {
-      temp: null,
-      station: "Sin datos",
-      status: "error"
-    };
+	// ✈️ METAR (CheckWX ROBUSTO)
+	// -----------------------------
+	let metar = {
+	  temp: null,
+	  station: "Sin datos",
+	  status: "error"
+	};
 
-    try {
-      const metarRes = await fetch(
-        `https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/50/decoded`,
-        {
-          headers: {
-            "X-API-Key": CHECKWX_KEY
-          }
-        }
-      );
+	try {
 
-      const metarData = await metarRes.json();
+	  async function fetchMetar(radius) {
+		const url = `https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/${radius}/decoded`;
 
-      const data = metarData?.data?.[0];
+		const res = await fetch(url, {
+		  headers: { "X-API-Key": process.env.CHECKWX_KEY }
+		});
 
-      if (data) {
-        metar = {
-          temp: data.temperature?.celsius ?? null,
-          station: data.station?.name ?? data.icao ?? "Aeropuerto",
-          status: "ok"
-        };
-      } else {
-        metar = {
-          temp: null,
-          station: "Sin aeropuerto cercano",
-          status: "error"
-        };
-      }
+		const text = await res.text();
 
-    } catch (err) {
-      console.error("METAR error:", err);
-      metar.status = "error";
-    }
+		console.log("METAR RAW:", text); // 🔥 DEBUG
+
+		if (!res.ok) return null;
+
+		const json = JSON.parse(text);
+		return json.data?.[0] ?? null;
+	  }
+
+	  // 🔁 intentos progresivos
+	  let data =
+		await fetchMetar(50) ||
+		await fetchMetar(150) ||
+		await fetchMetar(300);
+
+	  if (data) {
+		metar = {
+		  temp: data.temperature?.celsius ?? null,
+		  station: data.station?.name ?? data.icao ?? "Aeropuerto",
+		  status: "ok"
+		};
+	  } else {
+		metar = {
+		  temp: null,
+		  station: "Sin METAR cercano",
+		  status: "nodata"
+		};
+	  }
+
+	} catch (err) {
+	  console.error("METAR ERROR:", err);
+
+	  metar = {
+		temp: null,
+		station: "Error conexión METAR",
+		status: "error"
+	  };
+	}
 
     // -----------------------------
     // 📊 CONSOLIDADO
