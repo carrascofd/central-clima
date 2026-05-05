@@ -105,7 +105,7 @@ export default async function handler(req, res) {
     // -------------------------
     // METAR CHECKWX
     // -------------------------
-    let metar = { temp: null, station: "Sin datos", status: "nodata" };
+    let metar = { temp: null, station: "Sin aeropuerto cercano", status: "nodata" };
 
     function getDistanceKm(lat1, lon1, lat2, lon2) {
       const dLat = lat1 - lat2;
@@ -115,7 +115,7 @@ export default async function handler(req, res) {
 
     try {
       const r = await fetch(
-        `https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/300/decoded`,
+        `https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/500/decoded`,
         { headers: { "X-API-Key": CHECKWX_KEY } }
       );
 
@@ -127,8 +127,13 @@ export default async function handler(req, res) {
 
         for (const st of d.data || []) {
 
-          const lat = st.geometry?.coordinates?.[1];
-          const lon = st.geometry?.coordinates?.[0];
+          const lat =
+            st.geometry?.coordinates?.[1] ??
+            st.station?.location?.latitude;
+
+          const lon =
+            st.geometry?.coordinates?.[0] ??
+            st.station?.location?.longitude;
 
           if (!lat || !lon) continue;
 
@@ -147,9 +152,14 @@ export default async function handler(req, res) {
             status: "ok"
           };
         }
+      } else {
+        const err = await r.text();
+        console.error("CheckWX error:", err);
       }
 
-    } catch {}
+    } catch (e) {
+      console.error("METAR error:", e);
+    }
 
     // METEOSTAT (fallback simple)
     let meteostat = { temp: null };
