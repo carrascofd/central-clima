@@ -9,9 +9,6 @@ export default async function handler(req, res) {
 
   try {
 
-    // =============================
-    // BASE COORDS (FUENTE PRINCIPAL)
-    // =============================
     let baseLat = latQuery ? parseFloat(latQuery) : null;
     let baseLon = lonQuery ? parseFloat(lonQuery) : null;
 
@@ -19,7 +16,7 @@ export default async function handler(req, res) {
     let owDesc = "";
 
     // =============================
-    // 1. OPENWEATHER
+    // OPENWEATHER
     // =============================
     try {
       let owUrl;
@@ -38,7 +35,6 @@ export default async function handler(req, res) {
         owTemp = d.main?.temp ?? null;
         owDesc = d.weather?.[0]?.description ?? "";
 
-        // usamos coords SIEMPRE desde acá si no vinieron
         if (!baseLat || !baseLon) {
           baseLat = d.coord?.lat;
           baseLon = d.coord?.lon;
@@ -50,7 +46,7 @@ export default async function handler(req, res) {
     }
 
     // =============================
-    // 2. OPEN-METEO
+    // OPEN-METEO
     // =============================
     let omTemp = null;
 
@@ -70,7 +66,7 @@ export default async function handler(req, res) {
     }
 
     // =============================
-    // 3. MET NORWAY
+    // MET NORWAY
     // =============================
     let metnoTemp = null;
 
@@ -98,7 +94,7 @@ export default async function handler(req, res) {
       : null;
 
     // =============================
-    // 4. SMN (VALIDADO)
+    // SMN (IGUAL)
     // =============================
     let smnTemp = null;
     let smnDesc = "Sin datos";
@@ -150,26 +146,51 @@ export default async function handler(req, res) {
     }
 
     // =============================
-    // 5. METAR (CHECKWX)
+    // ✅ METAR CORREGIDO (DISTANCIA REAL)
     // =============================
     let metarTemp = null;
     let metarStation = "Sin aeropuerto cercano";
 
+    function getDistanceKm(lat1, lon1, lat2, lon2) {
+      return Math.sqrt((lat1 - lat2) ** 2 + (lon1 - lon2) ** 2) * 111;
+    }
+
     try {
       if (baseLat && baseLon) {
         const r = await fetch(
-          `https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/200/decoded`,
+          `https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/300/decoded`,
           { headers: { "X-API-Key": CHECKWX_KEY } }
         );
 
         if (r.ok) {
           const d = await r.json();
 
-          if (d.data && d.data.length > 0) {
-            const st = d.data[0];
+          let best = null;
+          let min = Infinity;
 
-            metarTemp = st.temperature?.celsius ?? null;
-            metarStation = `${st.station?.name || ""} (${st.icao})`;
+          for (const st of d.data || []) {
+
+            const lat =
+              st.geometry?.coordinates?.[1] ??
+              st.station?.location?.latitude;
+
+            const lon =
+              st.geometry?.coordinates?.[0] ??
+              st.station?.location?.longitude;
+
+            if (!lat || !lon) continue;
+
+            const dist = getDistanceKm(baseLat, baseLon, lat, lon);
+
+            if (dist < min) {
+              min = dist;
+              best = st;
+            }
+          }
+
+          if (best) {
+            metarTemp = best.temperature?.celsius ?? null;
+            metarStation = `${best.station?.name || ""} (${best.icao}) - ${min.toFixed(1)} km`;
           }
         }
       }
@@ -178,7 +199,7 @@ export default async function handler(req, res) {
     }
 
     // =============================
-    // 6. METEOSTAT (REAL FALLBACK)
+    // METEOSTAT (IGUAL)
     // =============================
     let meteostatTemp = null;
     let meteostatDesc = "Sin datos";
@@ -211,7 +232,7 @@ export default async function handler(req, res) {
     }
 
     // =============================
-    // CONSENSO FINAL
+    // CONSENSO (IGUAL)
     // =============================
     let consensus = modelAvg;
 
