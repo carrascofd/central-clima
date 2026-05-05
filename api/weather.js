@@ -6,19 +6,6 @@ export default async function handler(req, res) {
   const OPENWEATHER_KEY = process.env.OPENWEATHER_KEY;
   const CHECKWX_KEY = process.env.CHECKWX_KEY;
 
-  // -----------------------------
-  // ICAO MAP
-  // -----------------------------
-  const ICAO_MAP = {
-    "buenos aires": "SAEZ",
-    "cordoba": "SACO",
-    "rosario": "SAAR",
-    "mendoza": "SAME",
-    "san luis": "SAOU",
-    "resistencia": "SARE",
-    "formosa": "SARF"
-  };
-
   try {
 
     // -----------------------------
@@ -96,37 +83,62 @@ export default async function handler(req, res) {
     }
 
     // -----------------------------
-    // METAR (CheckWX)
-    // -----------------------------
-    let metarTemp = null;
-    let metarStatus = "Sin aeropuerto cercano";
+	// ✈️ METAR (CheckWX por coordenadas)
+	// -----------------------------
+	let metarTemp = null;
+	let metarStatus = "Sin datos METAR";
+	let metarStation = "";
 
-    const icao = ICAO_MAP[city];
+	try {
 
-    if (icao) {
-      try {
-        const metarRes = await fetch(
-          `https://api.checkwx.com/metar/${icao}/decoded`,
-          {
-            headers: {
-              "X-API-Key": CHECKWX_KEY
-            }
-          }
-        );
+	  let metarUrl;
 
-        const metarData = await metarRes.json();
+	  if (baseLat && baseLon) {
+		// 🔥 USAR COORDENADAS (MEJOR OPCIÓN)
+		metarUrl = `https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/50/decoded`;
+	  } else if (city) {
+		// fallback ciudad → ICAO map
+		const ICAO_MAP = {
+		  "buenos aires": "SAEZ",
+		  "cordoba": "SACO",
+		  "rosario": "SAAR",
+		  "mendoza": "SAME",
+		  "san luis": "SAOU",
+		  "resistencia": "SARE",
+		  "formosa": "SARF"
+		};
 
-        const data = metarData.data?.[0];
+		const icao = ICAO_MAP[city];
 
-        if (data) {
-          metarTemp = data.temperature?.celsius ?? null;
-          metarStatus = "ok";
-        }
+		if (icao) {
+		  metarUrl = `https://api.checkwx.com/metar/${icao}/decoded`;
+		}
+	  }
 
-      } catch {
-        metarStatus = "Error METAR";
-      }
-    }
+	  if (metarUrl) {
+		const metarRes = await fetch(metarUrl, {
+		  headers: {
+			"X-API-Key": process.env.CHECKWX_KEY
+		  }
+		});
+
+		const metarData = await metarRes.json();
+
+		const data = metarData.data?.[0];
+
+		if (data) {
+		  metarTemp = data.temperature?.celsius ?? null;
+		  metarStation = data.station?.name ?? data.icao ?? "";
+		  metarStatus = "ok";
+		} else {
+		  metarStatus = "Sin estación cercana";
+		}
+	  }
+
+	} catch (err) {
+	  console.error("METAR error:", err);
+	  metarStatus = "Error METAR";
+	}
 
     // -----------------------------
     // CONSOLIDADO
@@ -156,9 +168,10 @@ export default async function handler(req, res) {
           status: smnStatus
         },
         metar: {
-          temp: metarTemp,
-          status: metarStatus
-        }
+		  temp: metarTemp,
+		  station: metarStation,
+		  status: metarStatus
+		}
       },
 
       extra: {
