@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-
   const city = req.query.city;
   const latQuery = req.query.lat;
   const lonQuery = req.query.lon;
@@ -9,297 +8,243 @@ export default async function handler(req, res) {
 
   try {
 
+    // =============================
+    // GEO BASE
+    // =============================
     let baseLat = latQuery ? parseFloat(latQuery) : null;
     let baseLon = lonQuery ? parseFloat(lonQuery) : null;
 
-    let owTemp = null;
-    let owDesc = "";
+    // =============================
+    // OPENWEATHER (para coords fallback)
+    // =============================
+    if (!baseLat || !baseLon) {
+      const geoRes = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?q=${city},AR&appid=${OPENWEATHER_KEY}`
+      );
+      const geoData = await geoRes.json();
+      baseLat = geoData.coord?.lat;
+      baseLon = geoData.coord?.lon;
+    }
 
     // =============================
-    // OPENWEATHER (igual)
+    // MODELOS
     // =============================
-    try {
-      let owUrl;
 
-      if (baseLat && baseLon) {
-        owUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&appid=${OPENWEATHER_KEY}`;
-      } else {
-        owUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city},AR&units=metric&appid=${OPENWEATHER_KEY}`;
-      }
+    // OpenWeather
+    const owRes = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&appid=${OPENWEATHER_KEY}`
+    );
+    const owData = owRes.ok ? await owRes.json() : null;
 
-      const r = await fetch(owUrl);
+    // Open-Meteo
+    const omRes = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true`
+    );
+    const omData = omRes.ok ? await omRes.json() : null;
 
-      if (r.ok) {
-        const d = await r.json();
+    // MET Norway
+    const metRes = await fetch(
+      `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`,
+      { headers: { "User-Agent": "clima-app" } }
+    );
+    const metData = metRes.ok ? await metRes.json() : null;
 
-        owTemp = d.main?.temp ?? null;
-        owDesc = d.weather?.[0]?.description ?? "";
-
-        if (!baseLat || !baseLon) {
-          baseLat = d.coord?.lat;
-          baseLon = d.coord?.lon;
+    const models = {
+      sources: {
+        openweather: {
+          temp: owData?.main?.temp ?? null
+        },
+        openmeteo: {
+          temp: omData?.current_weather?.temperature ?? null
+        },
+        metno: {
+          temp: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature ?? null
         }
       }
+    };
 
-    } catch {}
+    const modelTemps = Object.values(models.sources)
+      .map(s => s.temp)
+      .filter(t => t != null);
 
-    // =============================
-    // OPEN-METEO (igual)
-    // =============================
-    let omTemp = null;
-
-    try {
-      if (baseLat && baseLon) {
-        const r = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true`
-        );
-
-        if (r.ok) {
-          const d = await r.json();
-          omTemp = d.current_weather?.temperature ?? null;
-        }
-      }
-    } catch {}
-
-    // =============================
-    // MET NORWAY (igual)
-    // =============================
-    let metnoTemp = null;
-
-    try {
-      if (baseLat && baseLon) {
-        const r = await fetch(
-          `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`,
-          { headers: { "User-Agent": "clima-app" } }
-        );
-
-        if (r.ok) {
-          const d = await r.json();
-
-          metnoTemp =
-            d.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature ?? null;
-        }
-      }
-    } catch {}
-
-    const modelTemps = [owTemp, omTemp, metnoTemp].filter(v => v != null);
-    const modelAvg = modelTemps.length
-      ? modelTemps.reduce((a, b) => a + b, 0) / modelTemps.length
+    models.average = modelTemps.length
+      ? (modelTemps.reduce((a, b) => a + b, 0) / modelTemps.length).toFixed(1)
       : null;
 
     // =============================
-    // SMN (igual)
+    // 🟢 SMN (VALIDADO)
     // =============================
     let smnTemp = null;
-    let smnDesc = "Sin datos";
-    let smnValid = false;
+    let smnStation = "Sin datos";
 
     try {
-      const r = await fetch(`https://ws.smn.gob.ar/map_items/weather`);
+      const smnRes = await fetch(`https://ws.smn.gob.ar/map_items/weather`);
+      const smnData = await smnRes.json();
 
-      if (r.ok) {
-        const data = await r.json();
-
-        function dist(a, b, c, d) {
-          return Math.sqrt((a - c) ** 2 + (b - d) ** 2) * 111;
-        }
-
-        let best = null;
-        let min = Infinity;
-
-        for (const st of data) {
-          const lat = parseFloat(st.lat);
-          const lon = parseFloat(st.lon);
-          const temp = st.weather?.temp;
-
-          if (!lat || !lon || temp == null) continue;
-
-          const d = dist(baseLat, baseLon, lat, lon);
-
-          if (d < min) {
-            min = d;
-            best = st;
-          }
-        }
-
-        if (best) {
-          const now = Date.now() / 1000;
-
-          if (best.updated && (now - best.updated < 7200)) {
-            smnTemp = best.weather?.temp;
-            smnDesc = `${best.name} (${min.toFixed(1)} km)`;
-            smnValid = true;
-          } else {
-            smnDesc = "Sin datos actualizados";
-          }
-        }
-      }
-
-    } catch {}
-
-    // =============================
-    // ✅ METAR DEFINITIVO (FIX GEO)
-    // =============================
-    let metarTemp = null;
-    let metarStation = "Sin aeropuerto cercano";
-
-    function getDistanceKm(lat1, lon1, lat2, lon2) {
-      return Math.sqrt((lat1 - lat2) ** 2 + (lon1 - lon2) ** 2) * 111;
-    }
-
-    const ICAO_MAP = {
-      "san luis": "SAOU",
-      "cordoba": "SACO",
-      "rosario": "SAAR",
-      "buenos aires": "SAEZ",
-      "mendoza": "SAME",
-      "salta": "SASA",
-      "neuquen": "SAZN",
-      "resistencia": "SARE",
-      "formosa": "SARF"
-    };
-
-    try {
       let best = null;
-      let min = Infinity;
+      let minDist = Infinity;
 
-      if (baseLat && baseLon) {
+      for (const st of smnData) {
+        const lat = parseFloat(st.lat);
+        const lon = parseFloat(st.lon);
 
-        const r = await fetch(
-          `https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/400/decoded`,
-          { headers: { "X-API-Key": CHECKWX_KEY } }
-        );
+        if (!lat || !lon) continue;
 
-        if (r.ok) {
-          const d = await r.json();
+        const d = Math.sqrt((lat - baseLat)**2 + (lon - baseLon)**2);
 
-          let fallbackNoCoords = null;
-
-          for (const st of d.data || []) {
-
-            const lat =
-              st.geometry?.coordinates?.[1] ??
-              st.station?.location?.latitude;
-
-            const lon =
-              st.geometry?.coordinates?.[0] ??
-              st.station?.location?.longitude;
-
-            // si tiene coords → usar distancia
-            if (lat && lon) {
-              const dist = getDistanceKm(baseLat, baseLon, lat, lon);
-
-              if (dist < min) {
-                min = dist;
-                best = st;
-              }
-            }
-
-            // fallback si no hay coords
-            if (!lat && !fallbackNoCoords) {
-              fallbackNoCoords = st;
-            }
-          }
-
-          // si no encontramos con coords, usamos fallback
-          if (!best && fallbackNoCoords) {
-            best = fallbackNoCoords;
-          }
-        }
-      }
-
-      // fallback ICAO
-      if (!best && city) {
-        const icao = ICAO_MAP[city.toLowerCase()];
-
-        if (icao) {
-          const r2 = await fetch(
-            `https://api.checkwx.com/metar/${icao}/decoded`,
-            { headers: { "X-API-Key": CHECKWX_KEY } }
-          );
-
-          if (r2.ok) {
-            const d2 = await r2.json();
-            best = d2.data?.[0] ?? null;
-          }
+        if (d < minDist) {
+          minDist = d;
+          best = st;
         }
       }
 
       if (best) {
-        metarTemp = best.temperature?.celsius ?? null;
-        metarStation = `${best.station?.name || ""} (${best.icao})`;
-      }
+        const now = Date.now() / 1000;
+        const updated = best.updated;
 
-    } catch (err) {
-      console.error("METAR error:", err);
-    }
-
-    // =============================
-    // METEOSTAT (igual)
-    // =============================
-    let meteostatTemp = null;
-    let meteostatDesc = "Sin datos";
-
-    try {
-      if (baseLat && baseLon) {
-        const r = await fetch(
-          `https://meteostat.p.rapidapi.com/point/nearest?lat=${baseLat}&lon=${baseLon}`,
-          {
-            headers: {
-              "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-              "X-RapidAPI-Host": "meteostat.p.rapidapi.com"
-            }
-          }
-        );
-
-        if (r.ok) {
-          const d = await r.json();
-
-          if (d.data && d.data.length > 0) {
-            const st = d.data[0];
-            meteostatTemp = st.temp ?? null;
-            meteostatDesc = st.name;
-          }
+        if (updated && (now - updated) < 10800) {
+          smnTemp = best.weather?.temp ?? best.temp ?? null;
+          smnStation = best.name;
+        } else {
+          smnStation = "Sin datos actualizados";
         }
       }
+
     } catch {}
 
     // =============================
-    // CONSENSO (igual)
+    // ✈️ BASE DE AEROPUERTOS (expandible)
     // =============================
-    let consensus = modelAvg;
+    const AIRPORTS = [
+      { icao: "SAOU", name: "San Luis", lat: -33.273, lon: -66.356, alt: 700 },
+      { icao: "SACO", name: "Córdoba", lat: -31.323, lon: -64.208, alt: 474 },
+      { icao: "SABE", name: "Aeroparque", lat: -34.559, lon: -58.416, alt: 6 },
+      { icao: "SAEZ", name: "Ezeiza", lat: -34.822, lon: -58.535, alt: 20 },
+      { icao: "SAAR", name: "Rosario", lat: -32.903, lon: -60.785, alt: 25 },
+      { icao: "SAME", name: "Mendoza", lat: -32.831, lon: -68.792, alt: 704 },
+      { icao: "SANT", name: "Tucumán", lat: -26.841, lon: -65.104, alt: 450 },
+      { icao: "SAZS", name: "Bariloche", lat: -41.151, lon: -71.157, alt: 840 },
+      { icao: "SAWE", name: "Río Gallegos", lat: -51.608, lon: -69.312, alt: 20 }
+    ];
 
-    if (smnValid && smnTemp != null) {
-      consensus = (consensus + smnTemp) / 2;
-    } else if (metarTemp != null) {
-      consensus = (consensus + metarTemp) / 2;
-    } else if (meteostatTemp != null) {
-      consensus = (consensus + meteostatTemp) / 2;
+    function distanceKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+
+      const a =
+        Math.sin(dLat/2)**2 +
+        Math.cos(lat1*Math.PI/180) *
+        Math.cos(lat2*Math.PI/180) *
+        Math.sin(dLon/2)**2;
+
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
     }
 
-    if (consensus != null) {
-      consensus = Number(consensus.toFixed(1));
+    function selectAirport(lat, lon) {
+      let best = null;
+      let bestScore = Infinity;
+
+      for (const ap of AIRPORTS) {
+        const dist = distanceKm(lat, lon, ap.lat, ap.lon);
+
+        // 🔥 SCORE INTELIGENTE
+        let score = dist;
+
+        // penalizar altitudes muy distintas
+        score += Math.abs((ap.alt || 0) - 500) * 0.01;
+
+        if (score < bestScore) {
+          bestScore = score;
+          best = ap;
+        }
+      }
+
+      return best;
     }
 
-    res.status(200).json({
-      city,
-      models: {
-        sources: {
-          openweather: { temp: owTemp, desc: owDesc },
-          openmeteo: { temp: omTemp },
-          metno: { temp: metnoTemp }
-        },
-        average: modelAvg != null ? modelAvg.toFixed(1) : null
-      },
+    // =============================
+    // ✈️ METAR CHECKWX
+    // =============================
+    let metar = { temp: null, station: "Sin datos" };
+
+    try {
+      const airport = selectAirport(baseLat, baseLon);
+
+      if (airport) {
+        const metarRes = await fetch(
+          `https://api.checkwx.com/metar/${airport.icao}/decoded`,
+          {
+            headers: { "X-API-Key": CHECKWX_KEY }
+          }
+        );
+
+        const metarData = await metarRes.json();
+        const obs = metarData.data?.[0];
+
+        if (obs) {
+          metar = {
+            temp: obs.temperature?.celsius ?? null,
+            station: `${airport.name} (${airport.icao})`
+          };
+        } else {
+          metar.station = "Sin datos METAR";
+        }
+      }
+
+    } catch {}
+
+    // =============================
+    // METEOSTAT (fallback)
+    // =============================
+    let meteostat = { temp: null, desc: "Sin datos" };
+
+    try {
+      const msRes = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true`
+      );
+      const msData = await msRes.json();
+
+      meteostat.temp = msData?.current_weather?.temperature ?? null;
+      meteostat.desc = "Dato actual (fallback)";
+    } catch {}
+
+    // =============================
+    // CONSOLIDADO
+    // =============================
+    const allTemps = [
+      ...modelTemps,
+      smnTemp,
+      metar.temp,
+      meteostat.temp
+    ].filter(t => t != null);
+
+    const consensus = allTemps.length
+      ? (allTemps.reduce((a, b) => a + b, 0) / allTemps.length).toFixed(1)
+      : null;
+
+    const result = {
+      consensus,
+      confidence: allTemps.length >= 3 ? "alta" : "media",
+
+      models,
+
       observation: {
-        smn: { temp: smnTemp, desc: smnDesc, valid: smnValid },
-        metar: { temp: metarTemp, station: metarStation },
-        meteostat: { temp: meteostatTemp, desc: meteostatDesc }
+        smn: {
+          temp: smnTemp,
+          station: smnStation
+        },
+        metar
       },
-      consensus
-    });
+
+      extra: {
+        meteostat
+      }
+    };
+
+    res.status(200).json(result);
 
   } catch (error) {
-    res.status(500).json({ error: "Error general" });
+    res.status(500).json({ error: "Error backend", detail: error.message });
   }
 }
