@@ -138,7 +138,7 @@ export default async function handler(req, res) {
     } catch {}
 
     // =============================
-    // 🔥 METAR CORRECTO DEFINITIVO
+    // ✅ METAR DEFINITIVO (FIX GEO)
     // =============================
     let metarTemp = null;
     let metarStation = "Sin aeropuerto cercano";
@@ -147,7 +147,6 @@ export default async function handler(req, res) {
       return Math.sqrt((lat1 - lat2) ** 2 + (lon1 - lon2) ** 2) * 111;
     }
 
-    // fallback ICAO
     const ICAO_MAP = {
       "san luis": "SAOU",
       "cordoba": "SACO",
@@ -164,8 +163,8 @@ export default async function handler(req, res) {
       let best = null;
       let min = Infinity;
 
-      // ===== 1. BUSCAR POR COORDENADAS =====
       if (baseLat && baseLon) {
+
         const r = await fetch(
           `https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/400/decoded`,
           { headers: { "X-API-Key": CHECKWX_KEY } }
@@ -173,6 +172,8 @@ export default async function handler(req, res) {
 
         if (r.ok) {
           const d = await r.json();
+
+          let fallbackNoCoords = null;
 
           for (const st of d.data || []) {
 
@@ -184,19 +185,30 @@ export default async function handler(req, res) {
               st.geometry?.coordinates?.[0] ??
               st.station?.location?.longitude;
 
-            if (!lat || !lon) continue;
+            // si tiene coords → usar distancia
+            if (lat && lon) {
+              const dist = getDistanceKm(baseLat, baseLon, lat, lon);
 
-            const dist = getDistanceKm(baseLat, baseLon, lat, lon);
-
-            if (dist < min) {
-              min = dist;
-              best = st;
+              if (dist < min) {
+                min = dist;
+                best = st;
+              }
             }
+
+            // fallback si no hay coords
+            if (!lat && !fallbackNoCoords) {
+              fallbackNoCoords = st;
+            }
+          }
+
+          // si no encontramos con coords, usamos fallback
+          if (!best && fallbackNoCoords) {
+            best = fallbackNoCoords;
           }
         }
       }
 
-      // ===== 2. FALLBACK ICAO =====
+      // fallback ICAO
       if (!best && city) {
         const icao = ICAO_MAP[city.toLowerCase()];
 
@@ -213,7 +225,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // ===== 3. RESULTADO FINAL =====
       if (best) {
         metarTemp = best.temperature?.celsius ?? null;
         metarStation = `${best.station?.name || ""} (${best.icao})`;
@@ -270,9 +281,6 @@ export default async function handler(req, res) {
       consensus = Number(consensus.toFixed(1));
     }
 
-    // =============================
-    // RESULTADO
-    // =============================
     res.status(200).json({
       city,
       models: {
