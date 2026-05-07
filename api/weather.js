@@ -124,7 +124,8 @@ export default async function handler(req, res) {
       { icao: "SAME", name: "Mendoza", lat: -32.831, lon: -68.792, alt: 704 },
       { icao: "SANT", name: "Tucumán", lat: -26.841, lon: -65.104, alt: 450 },
       { icao: "SAZS", name: "Bariloche", lat: -41.151, lon: -71.157, alt: 840 },
-      { icao: "SAWE", name: "Río Gallegos", lat: -51.608, lon: -69.312, alt: 20 }
+      { icao: "SAWE", name: "Río Gallegos", lat: -51.608, lon: -69.312, alt: 20 },
+	  { icao: "CYOW", name: "Ottawa Macdonald-Cartier International Airport", lat: -75.6692, lon: 45.3225, alt: 115 }
     ];
 
     function distanceKm(lat1, lon1, lat2, lon2) {
