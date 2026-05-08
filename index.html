@@ -498,10 +498,7 @@ body {
 
   <div class="logo-container">
 
-    <img
-      src="central de clima transparente.png"
-      alt="Central de Clima"
-    />
+    <img class="logo" src="/public/logo.png" alt="Central de Clima">
 
   </div>
 
@@ -510,7 +507,6 @@ body {
     <div class="search-box">
 
       <div class="search-icon">
-        ??
       </div>
 
       <input
@@ -842,13 +838,13 @@ function render(data) {
   document.getElementById("avg")
     .innerHTML =
 
-    `?? Promedio modelos:
+    `Temperatura promedio modelos:
     ${data.models.average ?? "-"} &deg;C`;
 
   document.getElementById("sources")
     .innerHTML =
 
-    `?? Fuentes activas:
+    `Fuentes activas:
     ${
       Object.values(data.models.sources)
         .filter(s => s.temp != null)
@@ -881,7 +877,7 @@ function render(data) {
       <div class="api-card">
 
         <div class="api-title">
-          ?? ${names[key]}
+          ${names[key]}
         </div>
 
         <div class="api-temp">
@@ -889,12 +885,12 @@ function render(data) {
         </div>
 
         <div class="api-detail">
-          ?? Humedad:
+          Humedad:
           ${s.humidity ?? "-"}
         </div>
 
         <div class="api-detail">
-          ?? Viento:
+          Viento:
           ${s.wind ?? "-"}
         </div>
 
@@ -916,7 +912,7 @@ function render(data) {
     <div class="api-card">
 
       <div class="api-title">
-        ?? METAR
+        METAR
       </div>
 
       <div class="api-temp">
@@ -940,7 +936,7 @@ function render(data) {
     <div class="api-card">
 
       <div class="api-title">
-        ?? Meteostat
+        Meteostat
       </div>
 
       <div class="api-temp">
