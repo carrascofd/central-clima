@@ -3,7 +3,12 @@
 
 <head>
 
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+/>
 
 <title>Central de Clima</title>
 
@@ -12,75 +17,471 @@
   href="https://unpkg.com/leaflet/dist/leaflet.css"
 />
 
+<link
+  rel="preconnect"
+  href="https://fonts.googleapis.com"
+/>
+
+<link
+  rel="preconnect"
+  href="https://fonts.gstatic.com"
+  crossorigin
+/>
+
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+  rel="stylesheet"
+/>
+
 <style>
 
+* {
+  box-sizing:border-box;
+}
+
 body {
+
   margin:0;
-  font-family:Arial;
-  background:#0f172a;
+  font-family:'Inter', sans-serif;
+
+  background:
+    linear-gradient(
+      rgba(6,11,25,.92),
+      rgba(6,11,25,.96)
+    ),
+    url('https://images.unsplash.com/photo-1501630834273-4b5604d2ee31?q=80&w=1600&auto=format&fit=crop');
+
+  background-size:cover;
+  background-position:center;
+  background-attachment:fixed;
+
   color:white;
 }
+
+/* ====================================================== */
+/* HEADER */
+/* ====================================================== */
 
 .header {
+
+  position:sticky;
+  top:0;
+  z-index:999;
+
+  backdrop-filter:blur(18px);
+
+  background:rgba(8,15,30,.75);
+
+  border-bottom:1px solid rgba(255,255,255,.06);
+
+  padding:14px 24px;
+
   display:flex;
-  justify-content:center;
-  gap:10px;
-  padding:20px;
-}
-
-input {
-  padding:10px;
-  border:none;
-  border-radius:8px;
-}
-
-button {
-  padding:10px 15px;
-  border:none;
-  border-radius:8px;
-  background:#3b82f6;
-  color:white;
-  cursor:pointer;
-}
-
-.container {
-  max-width:1100px;
-  margin:auto;
-}
-
-.main-card {
-  background:#1e293b;
-  padding:20px;
-  border-radius:12px;
-  margin-bottom:20px;
-}
-
-.grid {
-  display:grid;
-  grid-template-columns:2fr 1fr;
+  align-items:center;
+  justify-content:space-between;
   gap:20px;
 }
 
-#map {
-  height:250px;
-  border-radius:12px;
+.logo-container {
+
+  display:flex;
+  align-items:center;
+  gap:14px;
+
+  min-width:260px;
 }
 
-.api-grid {
+.logo-container img {
+
+  height:58px;
+  width:auto;
+
+  object-fit:contain;
+}
+
+.logo-title {
+
+  display:flex;
+  flex-direction:column;
+  line-height:1;
+}
+
+.logo-title .top {
+
+  color:#78b8ff;
+  font-size:34px;
+  font-weight:700;
+}
+
+.logo-title .bottom {
+
+  color:#b8dc61;
+  font-size:34px;
+  font-weight:700;
+}
+
+/* ====================================================== */
+/* SEARCH */
+/* ====================================================== */
+
+.search-wrapper {
+
+  width:100%;
+  max-width:650px;
+
+  position:relative;
+}
+
+.search-box {
+
+  display:flex;
+  align-items:center;
+
+  background:rgba(255,255,255,.12);
+
+  border:1px solid rgba(255,255,255,.08);
+
+  border-radius:18px;
+
+  overflow:hidden;
+
+  backdrop-filter:blur(12px);
+
+  transition:.2s;
+}
+
+.search-box:focus-within {
+
+  border-color:#60a5fa;
+
+  box-shadow:
+    0 0 0 4px rgba(96,165,250,.15);
+}
+
+.search-icon {
+
+  padding-left:18px;
+
+  font-size:22px;
+  opacity:.7;
+}
+
+.search-box input {
+
+  width:100%;
+
+  background:transparent;
+  border:none;
+  outline:none;
+
+  color:white;
+
+  font-size:17px;
+
+  padding:18px 16px;
+}
+
+.search-box input::placeholder {
+  color:rgba(255,255,255,.55);
+}
+
+.search-btn {
+
+  border:none;
+
+  background:#3b82f6;
+
+  color:white;
+
+  padding:18px 22px;
+
+  cursor:pointer;
+
+  font-size:15px;
+  font-weight:600;
+
+  transition:.2s;
+}
+
+.search-btn:hover {
+
+  background:#2563eb;
+}
+
+/* ====================================================== */
+/* AUTOCOMPLETE */
+/* ====================================================== */
+
+.autocomplete {
+
+  position:absolute;
+
+  top:76px;
+  left:0;
+  right:0;
+
+  background:rgba(18,25,42,.98);
+
+  border-radius:18px;
+
+  overflow:hidden;
+
+  border:1px solid rgba(255,255,255,.06);
+
+  backdrop-filter:blur(18px);
+
+  box-shadow:
+    0 20px 60px rgba(0,0,0,.35);
+
+  display:none;
+}
+
+.autocomplete-item {
+
+  padding:16px 20px;
+
+  cursor:pointer;
+
+  border-bottom:
+    1px solid rgba(255,255,255,.05);
+
+  transition:.15s;
+}
+
+.autocomplete-item:hover {
+
+  background:
+    rgba(255,255,255,.06);
+}
+
+.autocomplete-name {
+
+  font-size:16px;
+  font-weight:600;
+}
+
+.autocomplete-detail {
+
+  margin-top:4px;
+
+  color:#9fb0c7;
+
+  font-size:13px;
+}
+
+/* ====================================================== */
+/* CONTENT */
+/* ====================================================== */
+
+.container {
+
+  max-width:1250px;
+
+  margin:auto;
+
+  padding:24px;
+}
+
+/* ====================================================== */
+/* MAIN CARD */
+/* ====================================================== */
+
+.main-card {
+
+  background:
+    rgba(18,25,42,.82);
+
+  border:
+    1px solid rgba(255,255,255,.06);
+
+  border-radius:26px;
+
+  padding:28px;
+
+  backdrop-filter:blur(14px);
+
+  box-shadow:
+    0 10px 40px rgba(0,0,0,.25);
+
+  margin-bottom:24px;
+}
+
+.temp-main {
+
+  font-size:74px;
+  font-weight:700;
+
+  margin:0;
+}
+
+.confidence {
+
+  margin-top:8px;
+
+  color:#9cc6ff;
+
+  font-size:18px;
+}
+
+/* ====================================================== */
+/* GRID */
+/* ====================================================== */
+
+.grid {
+
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:15px;
-  margin-top:20px;
+
+  grid-template-columns:
+    1.4fr .9fr;
+
+  gap:24px;
+
+  margin-bottom:24px;
+}
+
+.info-box {
+
+  background:
+    rgba(18,25,42,.82);
+
+  border:
+    1px solid rgba(255,255,255,.06);
+
+  border-radius:24px;
+
+  padding:26px;
+
+  min-height:260px;
+}
+
+.info-line {
+
+  font-size:20px;
+
+  margin-bottom:14px;
+}
+
+#map {
+
+  height:260px;
+
+  border-radius:24px;
+
+  overflow:hidden;
+
+  border:
+    1px solid rgba(255,255,255,.06);
+}
+
+/* ====================================================== */
+/* API CARDS */
+/* ====================================================== */
+
+.api-grid {
+
+  display:grid;
+
+  grid-template-columns:
+    repeat(auto-fit,minmax(240px,1fr));
+
+  gap:18px;
 }
 
 .api-card {
-  background:#1e293b;
-  padding:15px;
-  border-radius:10px;
+
+  background:
+    rgba(18,25,42,.82);
+
+  border:
+    1px solid rgba(255,255,255,.06);
+
+  border-radius:22px;
+
+  padding:22px;
+
+  backdrop-filter:blur(12px);
+
+  transition:.2s;
 }
 
-h1 {
-  margin:0;
+.api-card:hover {
+
+  transform:translateY(-4px);
+
+  box-shadow:
+    0 12px 40px rgba(0,0,0,.25);
+}
+
+.api-title {
+
+  font-size:18px;
+  font-weight:700;
+
+  margin-bottom:18px;
+}
+
+.api-temp {
+
+  font-size:38px;
+  font-weight:700;
+
+  margin-bottom:12px;
+}
+
+.api-detail {
+
+  color:#c0d4ea;
+
+  margin-bottom:8px;
+
+  font-size:14px;
+}
+
+.ok {
+  color:#22c55e;
+}
+
+.error {
+  color:#ef4444;
+}
+
+/* ====================================================== */
+/* MOBILE */
+/* ====================================================== */
+
+@media(max-width:900px){
+
+  .header {
+
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .search-wrapper {
+
+    max-width:100%;
+  }
+
+  .grid {
+
+    grid-template-columns:1fr;
+  }
+
+  .temp-main {
+
+    font-size:52px;
+  }
+
+  .logo-container img {
+
+    height:48px;
+  }
+
+  .logo-title .top,
+  .logo-title .bottom {
+
+    font-size:28px;
+  }
 }
 
 </style>
@@ -89,44 +490,100 @@ h1 {
 
 <body>
 
+<!-- ====================================================== -->
+<!-- HEADER -->
+<!-- ====================================================== -->
+
 <div class="header">
 
-  <input
-    id="city"
-    placeholder="Ciudad"
-  />
+  <div class="logo-container">
 
-  <button onclick="buscar()">
-    Consultar
-  </button>
-
-</div>
-
-<div class="container">
-
-  <div class="main-card">
-
-    <h1 id="temp">
-      -- &deg;C
-    </h1>
-
-    <p id="confidence"></p>
+    <img
+      src="central de clima transparente.png"
+      alt="Central de Clima"
+    />
 
   </div>
 
+  <div class="search-wrapper">
+
+    <div class="search-box">
+
+      <div class="search-icon">
+        ??
+      </div>
+
+      <input
+        id="city"
+        placeholder="Buscar ciudad o ubicaci¨®n..."
+        autocomplete="off"
+      />
+
+      <button
+        class="search-btn"
+        onclick="buscarManual()"
+      >
+        Consultar
+      </button>
+
+    </div>
+
+    <div
+      id="autocomplete"
+      class="autocomplete"
+    ></div>
+
+  </div>
+
+</div>
+
+<!-- ====================================================== -->
+<!-- CONTENT -->
+<!-- ====================================================== -->
+
+<div class="container">
+
+  <!-- MAIN -->
+
+  <div class="main-card">
+
+    <h1
+      id="temp"
+      class="temp-main"
+    >
+      -- &deg;C
+    </h1>
+
+    <div
+      id="confidence"
+      class="confidence"
+    ></div>
+
+  </div>
+
+  <!-- GRID -->
+
   <div class="grid">
 
-    <div class="main-card">
+    <div class="info-box">
 
-      <p id="avg"></p>
+      <div
+        id="avg"
+        class="info-line"
+      ></div>
 
-      <p id="sources"></p>
+      <div
+        id="sources"
+        class="info-line"
+      ></div>
 
     </div>
 
     <div id="map"></div>
 
   </div>
+
+  <!-- APIs -->
 
   <div
     class="api-grid"
@@ -142,6 +599,13 @@ h1 {
 let map;
 let marker;
 
+let selectedLat = null;
+let selectedLon = null;
+
+/* ====================================================== */
+/* MAP */
+/* ====================================================== */
+
 function initMap(lat, lon) {
 
   if (!map) {
@@ -152,8 +616,7 @@ function initMap(lat, lon) {
     L.tileLayer(
       "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
-        attribution:
-          "? OpenStreetMap"
+        attribution:"? OpenStreetMap"
       }
     ).addTo(map);
 
@@ -168,6 +631,10 @@ function initMap(lat, lon) {
     marker.setLatLng([lat, lon]);
   }
 }
+
+/* ====================================================== */
+/* AUTO LOCATION */
+/* ====================================================== */
 
 window.onload = () => {
 
@@ -185,14 +652,149 @@ window.onload = () => {
   }
 };
 
-function buscar() {
+/* ====================================================== */
+/* AUTOCOMPLETE */
+/* ====================================================== */
+
+const cityInput =
+  document.getElementById("city");
+
+const autocomplete =
+  document.getElementById("autocomplete");
+
+cityInput.addEventListener(
+  "input",
+  async (e) => {
+
+    const q =
+      e.target.value.trim();
+
+    if (q.length < 3) {
+
+      autocomplete.style.display =
+        "none";
+
+      return;
+    }
+
+    try {
+
+      const res = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6`
+      );
+
+      const data =
+        await res.json();
+
+      autocomplete.innerHTML = "";
+
+      data.features.forEach(item => {
+
+        const name =
+          item.properties.name || "";
+
+        const city =
+          item.properties.city || "";
+
+        const state =
+          item.properties.state || "";
+
+        const country =
+          item.properties.country || "";
+
+        const lon =
+          item.geometry.coordinates[0];
+
+        const lat =
+          item.geometry.coordinates[1];
+
+        const div =
+          document.createElement("div");
+
+        div.className =
+          "autocomplete-item";
+
+        div.innerHTML = `
+
+          <div class="autocomplete-name">
+            ${name}
+          </div>
+
+          <div class="autocomplete-detail">
+            ${city} ${state} ${country}
+          </div>
+
+        `;
+
+        div.onclick = () => {
+
+          cityInput.value =
+            `${name}, ${state}, ${country}`;
+
+          selectedLat = lat;
+          selectedLon = lon;
+
+          autocomplete.style.display =
+            "none";
+
+          cargar(lat, lon);
+        };
+
+        autocomplete.appendChild(div);
+      });
+
+      autocomplete.style.display =
+        data.features.length
+          ? "block"
+          : "none";
+
+    } catch(e){}
+  }
+);
+
+document.addEventListener(
+  "click",
+  (e) => {
+
+    if (
+      !autocomplete.contains(e.target)
+      &&
+      e.target !== cityInput
+    ) {
+
+      autocomplete.style.display =
+        "none";
+    }
+  }
+);
+
+/* ====================================================== */
+/* SEARCH */
+/* ====================================================== */
+
+function buscarManual() {
+
+  if (
+    selectedLat != null &&
+    selectedLon != null
+  ) {
+
+    cargar(
+      selectedLat,
+      selectedLon
+    );
+
+    return;
+  }
 
   const city =
-    document.getElementById("city").value;
+    cityInput.value.trim();
 
   if (!city) return;
 
-  fetch(`/api/weather?city=${encodeURIComponent(city)}`)
+  fetch(
+    `/api/weather?city=${encodeURIComponent(city)}`
+  )
     .then(r => r.json())
     .then(data => {
 
@@ -202,38 +804,52 @@ function buscar() {
         data.location.lat,
         data.location.lon
       );
-
     });
 }
 
 function cargar(lat, lon) {
 
-  fetch(`/api/weather?lat=${lat}&lon=${lon}`)
+  fetch(
+    `/api/weather?lat=${lat}&lon=${lon}`
+  )
     .then(r => r.json())
     .then(data => {
 
       render(data);
 
       initMap(lat, lon);
-
     });
 }
 
+/* ====================================================== */
+/* RENDER */
+/* ====================================================== */
+
 function render(data) {
 
-  document.getElementById("temp").innerHTML =
+  document.getElementById("temp")
+    .innerHTML =
+
     data.consensus != null
       ? `${data.consensus} &deg;C`
       : "-- &deg;C";
 
-  document.getElementById("confidence").innerText =
+  document.getElementById("confidence")
+    .innerText =
+
     `Confianza: ${data.confidence}`;
 
-  document.getElementById("avg").innerHTML =
-    `Promedio modelos: ${data.models.average ?? "-"} &deg;C`;
+  document.getElementById("avg")
+    .innerHTML =
 
-  document.getElementById("sources").innerText =
-    `Fuentes activas: ${
+    `?? Promedio modelos:
+    ${data.models.average ?? "-"} &deg;C`;
+
+  document.getElementById("sources")
+    .innerHTML =
+
+    `?? Fuentes activas:
+    ${
       Object.values(data.models.sources)
         .filter(s => s.temp != null)
         .length
@@ -244,7 +860,17 @@ function render(data) {
 
   container.innerHTML = "";
 
-  // ?? MODELOS
+  // ======================================================
+  // MODELOS
+  // ======================================================
+
+  const names = {
+
+    openweather:"OpenWeather",
+    openmeteo:"Open-Meteo",
+    metno:"MET Norway"
+  };
+
   for (const key in data.models.sources) {
 
     const s =
@@ -254,62 +880,76 @@ function render(data) {
 
       <div class="api-card">
 
-        <h3>${key}</h3>
+        <div class="api-title">
+          ?? ${names[key]}
+        </div>
 
-        <p>
+        <div class="api-temp">
           ${s.temp ?? "-"} &deg;C
-        </p>
+        </div>
 
-        <p>
-          ?? ${s.humidity ?? "-"}
-        </p>
+        <div class="api-detail">
+          ?? Humedad:
+          ${s.humidity ?? "-"}
+        </div>
 
-        <p>
-          ?? ${s.wind ?? "-"}
-        </p>
+        <div class="api-detail">
+          ?? Viento:
+          ${s.wind ?? "-"}
+        </div>
 
-        <p>
+        <div class="api-detail ok">
           ${s.desc ?? ""}
-        </p>
+        </div>
 
       </div>
 
     `;
   }
 
-  // ?? METAR
+  // ======================================================
+  // METAR
+  // ======================================================
+
   container.innerHTML += `
 
     <div class="api-card">
 
-      <h3>METAR</h3>
+      <div class="api-title">
+        ?? METAR
+      </div>
 
-      <p>
+      <div class="api-temp">
         ${data.observation.metar.temp ?? "-"} &deg;C
-      </p>
+      </div>
 
-      <p>
+      <div class="api-detail">
         ${data.observation.metar.station}
-      </p>
+      </div>
 
     </div>
 
   `;
 
-  // ?? METEOSTAT
+  // ======================================================
+  // METEOSTAT
+  // ======================================================
+
   container.innerHTML += `
 
     <div class="api-card">
 
-      <h3>Meteostat</h3>
+      <div class="api-title">
+        ?? Meteostat
+      </div>
 
-      <p>
+      <div class="api-temp">
         ${data.extra.meteostat.temp ?? "-"} &deg;C
-      </p>
+      </div>
 
-      <p>
+      <div class="api-detail">
         ${data.extra.meteostat.desc}
-      </p>
+      </div>
 
     </div>
 
