@@ -93,7 +93,7 @@ body {
 
 .logo-container img {
 
-  height:58px;
+  height:110px;
   width:auto;
 
   object-fit:contain;
@@ -323,6 +323,23 @@ body {
   font-size:18px;
 }
 
+.temp-row {
+
+  display:flex;
+  align-items:center;
+  gap:24px;
+
+  flex-wrap:wrap;
+}
+
+.location-main {
+
+  font-size:32px;
+  font-weight:600;
+
+  color:#bcd3ee;
+}
+
 /* ====================================================== */
 /* GRID */
 /* ====================================================== */
@@ -511,7 +528,7 @@ body {
 
       <input
         id="city"
-        placeholder="Buscar ciudad o ubicaci¨®n..."
+        placeholder="Buscar ciudad o ubicación..."
         autocomplete="off"
       />
 
@@ -543,12 +560,17 @@ body {
 
   <div class="main-card">
 
-    <h1
-      id="temp"
-      class="temp-main"
-    >
-      -- &deg;C
-    </h1>
+    <div class="temp-row">
+
+	  <h1 id="temp" class="temp-main">
+		-- &deg;C
+	  </h1>
+
+	  <div id="locationName" class="location-main">
+		Cargando ubicación...
+	  </div>
+
+	</div>
 
     <div
       id="confidence"
@@ -850,6 +872,9 @@ function render(data) {
         .filter(s => s.temp != null)
         .length
     }`;
+	
+  document.getElementById("locationName").innerText =
+	data.location?.name || "Ubicación desconocida";
 
   const container =
     document.getElementById("apis");

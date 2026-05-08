@@ -339,7 +339,7 @@ export default async function handler(req, res) {
           : "media",
 
       location: {
-
+		name: city || "Ubicación actual",
         lat: baseLat,
         lon: baseLon
 
