@@ -1,3 +1,247 @@
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const METAR_MAX_DISTANCE_KM = 100;
+
+const cache = new Map();
+
+function getCacheKey(lat, lon) {
+  return `${lat.toFixed(3)},${lon.toFixed(3)}`;
+}
+
+function getCachedResponse(key) {
+  const entry = cache.get(key);
+
+  if (!entry) {
+    return null;
+  }
+
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    cache.delete(key);
+    return null;
+  }
+
+  return entry.data;
+}
+
+function setCachedResponse(key, data) {
+  cache.set(key, {
+    timestamp: Date.now(),
+    data
+  });
+}
+
+function distanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+function metarDistanceKm(obs, lat, lon) {
+  const meters = obs?.position?.distance?.meters;
+
+  if (typeof meters === "number") {
+    return meters / 1000;
+  }
+
+  const coords = obs?.station?.geometry?.coordinates;
+
+  if (coords?.length >= 2) {
+    return distanceKm(lat, lon, coords[1], coords[0]);
+  }
+
+  return null;
+}
+
+async function fetchNearestMetar(lat, lon, apiKey) {
+  if (!apiKey) {
+    return {
+      temp: null,
+      station: "Sin datos",
+      distanceKm: null,
+      usedInConsensus: false,
+      note: "CHECKWX_KEY no configurada"
+    };
+  }
+
+  const metarRes = await fetch(
+    `https://api.checkwx.com/v2/metar/lat/${lat}/lon/${lon}/decoded?limit=1`,
+    {
+      headers: {
+        "X-API-Key": apiKey
+      }
+    }
+  );
+
+  if (!metarRes.ok) {
+    return {
+      temp: null,
+      station: "METAR sin datos",
+      distanceKm: null,
+      usedInConsensus: false,
+      note: null
+    };
+  }
+
+  const metarData = await metarRes.json();
+  const obs = metarData?.data?.[0];
+
+  if (!obs) {
+    return {
+      temp: null,
+      station: "METAR sin datos",
+      distanceKm: null,
+      usedInConsensus: false,
+      note: null
+    };
+  }
+
+  const distance = metarDistanceKm(obs, lat, lon);
+  const stationName =
+    obs.station?.name ??
+    obs.station?.icao ??
+    obs.icao ??
+    "Estación desconocida";
+
+  const icao = obs.station?.icao ?? obs.icao ?? "";
+  const stationLabel = icao
+    ? `${stationName} (${icao})`
+    : stationName;
+
+  const withinRange =
+    distance == null || distance <= METAR_MAX_DISTANCE_KM;
+
+  return {
+    temp: withinRange
+      ? obs.temperature?.celsius ?? null
+      : null,
+    station: stationLabel,
+    distanceKm:
+      distance != null
+        ? Number(distance.toFixed(1))
+        : null,
+    usedInConsensus: withinRange,
+    note: withinRange
+      ? null
+      : `Estación a ${Math.round(distance)} km (>${METAR_MAX_DISTANCE_KM} km), excluida del consenso`
+  };
+}
+
+async function fetchMeteostatObservation(lat, lon, apiKey) {
+  const empty = {
+    temp: null,
+    station: null,
+    distanceKm: null,
+    observedAt: null,
+    desc: "Sin datos",
+    usedInConsensus: false
+  };
+
+  if (!apiKey) {
+    return {
+      ...empty,
+      desc: "Meteostat no configurado (METEOSTAT_KEY)"
+    };
+  }
+
+  const headers = {
+    "x-rapidapi-host": "meteostat.p.rapidapi.com",
+    "x-rapidapi-key": apiKey
+  };
+
+  const nearbyRes = await fetch(
+    `https://meteostat.p.rapidapi.com/stations/nearby?lat=${lat}&lon=${lon}&limit=1`,
+    { headers }
+  );
+
+  if (!nearbyRes.ok) {
+    return {
+      ...empty,
+      desc: "Meteostat sin estación cercana"
+    };
+  }
+
+  const nearbyData = await nearbyRes.json();
+  const station = nearbyData?.data?.[0];
+
+  if (!station) {
+    return {
+      ...empty,
+      desc: "Meteostat sin estación cercana"
+    };
+  }
+
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(start.getDate() - 1);
+
+  const startStr = start.toISOString().slice(0, 10);
+  const endStr = end.toISOString().slice(0, 10);
+
+  const hourlyRes = await fetch(
+    `https://meteostat.p.rapidapi.com/stations/hourly?station=${station.id}&start=${startStr}&end=${endStr}&model=false&units=metric`,
+    { headers }
+  );
+
+  if (!hourlyRes.ok) {
+    return {
+      ...empty,
+      station: station.name?.en ?? station.id,
+      distanceKm:
+        station.distance != null
+          ? Number((station.distance / 1000).toFixed(1))
+          : null,
+      desc: "Meteostat sin observaciones recientes"
+    };
+  }
+
+  const hourlyData = await hourlyRes.json();
+  const rows = hourlyData?.data ?? [];
+  const latest = [...rows].reverse().find(row => row?.temp != null);
+
+  if (!latest) {
+    return {
+      ...empty,
+      station: station.name?.en ?? station.id,
+      distanceKm:
+        station.distance != null
+          ? Number((station.distance / 1000).toFixed(1))
+          : null,
+      desc: "Meteostat sin observaciones recientes"
+    };
+  }
+
+  const stationDistanceKm =
+    station.distance != null
+      ? station.distance / 1000
+      : null;
+
+  const withinRange =
+    stationDistanceKm == null ||
+    stationDistanceKm <= METAR_MAX_DISTANCE_KM;
+
+  return {
+    temp: withinRange ? latest.temp : null,
+    station: station.name?.en ?? station.id,
+    distanceKm:
+      stationDistanceKm != null
+        ? Number(stationDistanceKm.toFixed(1))
+        : null,
+    observedAt: latest.time ?? null,
+    desc: withinRange
+      ? "Observación de estación meteorológica"
+      : `Estación a ${Math.round(stationDistanceKm)} km (>${METAR_MAX_DISTANCE_KM} km), excluida del consenso`,
+    usedInConsensus: withinRange
+  };
+}
+
 export default async function handler(req, res) {
 
   const city = req.query.city;
@@ -6,6 +250,7 @@ export default async function handler(req, res) {
 
   const OPENWEATHER_KEY = process.env.OPENWEATHER_KEY;
   const CHECKWX_KEY = process.env.CHECKWX_KEY;
+  const METEOSTAT_KEY = process.env.METEOSTAT_KEY;
 
   try {
 
@@ -16,7 +261,6 @@ export default async function handler(req, res) {
     let baseLat = latQuery ? parseFloat(latQuery) : null;
     let baseLon = lonQuery ? parseFloat(lonQuery) : null;
 
-    // 🌍 Geocoding GLOBAL
     if (!baseLat || !baseLon) {
 
       const geoRes = await fetch(
@@ -35,46 +279,67 @@ export default async function handler(req, res) {
       baseLon = geoData[0].lon;
     }
 
-    // =====================================================
-    // 🔵 OPENWEATHER
-    // =====================================================
+    const cacheKey = getCacheKey(baseLat, baseLon);
+    const cached = getCachedResponse(cacheKey);
 
-    const owRes = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&appid=${OPENWEATHER_KEY}`
-    );
-
-    const owData = owRes.ok
-      ? await owRes.json()
-      : null;
+    if (cached) {
+      res.setHeader("X-Cache", "HIT");
+      return res.status(200).json(cached);
+    }
 
     // =====================================================
-    // 🔵 OPEN-METEO
+    // FUENTES (paralelo)
     // =====================================================
 
-    const omRes = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true`
-    );
+    const [
+      owRes,
+      omRes,
+      metRes,
+      metar,
+      meteostat
+    ] = await Promise.all([
 
-    const omData = omRes.ok
-      ? await omRes.json()
-      : null;
+      fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&appid=${OPENWEATHER_KEY}`
+      ),
 
-    // =====================================================
-    // 🔵 MET NORWAY
-    // =====================================================
+      fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true`
+      ),
 
-    const metRes = await fetch(
-      `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`,
-      {
-        headers: {
-          "User-Agent": "central-clima"
+      fetch(
+        `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`,
+        {
+          headers: {
+            "User-Agent": "central-clima"
+          }
         }
-      }
-    );
+      ),
 
-    const metData = metRes.ok
-      ? await metRes.json()
-      : null;
+      fetchNearestMetar(baseLat, baseLon, CHECKWX_KEY)
+        .catch(() => ({
+          temp: null,
+          station: "Error METAR",
+          distanceKm: null,
+          usedInConsensus: false,
+          note: null
+        })),
+
+      fetchMeteostatObservation(baseLat, baseLon, METEOSTAT_KEY)
+        .catch(() => ({
+          temp: null,
+          station: null,
+          distanceKm: null,
+          observedAt: null,
+          desc: "Error Meteostat",
+          usedInConsensus: false
+        }))
+
+    ]);
+
+    const owData = owRes.ok ? await owRes.json() : null;
+    const omData = omRes.ok ? await omRes.json() : null;
+    const metData = metRes.ok ? await metRes.json() : null;
 
     // =====================================================
     // MODELOS
@@ -135,187 +400,23 @@ export default async function handler(req, res) {
       : null;
 
     // =====================================================
-    // 🌍 AEROPUERTOS
-    // =====================================================
-
-    const AIRPORTS = [
-
-      { icao: "SAOU", name: "San Luis", lat: -33.273, lon: -66.356, alt: 700 },
-      { icao: "SACO", name: "Cordoba", lat: -31.323, lon: -64.208, alt: 474 },
-      { icao: "SAAR", name: "Rosario", lat: -32.903, lon: -60.785, alt: 25 },
-      { icao: "SAME", name: "Mendoza", lat: -32.831, lon: -68.792, alt: 704 },
-      { icao: "SABE", name: "Aeroparque", lat: -34.559, lon: -58.416, alt: 6 },
-      { icao: "SAEZ", name: "Ezeiza", lat: -34.822, lon: -58.535, alt: 20 },
-
-      // 🌍 Internacionales
-      { icao: "CYOW", name: "Ottawa", lat: 45.3225, lon: -75.6692, alt: 114 },
-      { icao: "CYYZ", name: "Toronto", lat: 43.6777, lon: -79.6248, alt: 173 },
-      { icao: "KJFK", name: "New York", lat: 40.6413, lon: -73.7781, alt: 4 },
-      { icao: "KLAX", name: "Los Angeles", lat: 33.9416, lon: -118.4085, alt: 38 },
-      { icao: "EGLL", name: "London Heathrow", lat: 51.4700, lon: -0.4543, alt: 25 },
-      { icao: "LFPG", name: "Paris CDG", lat: 49.0097, lon: 2.5479, alt: 119 }
-
-    ];
-
-    // =====================================================
-    // DISTANCIA REAL
-    // =====================================================
-
-    function distanceKm(lat1, lon1, lat2, lon2) {
-
-      const R = 6371;
-
-      const dLat =
-        (lat2 - lat1) * Math.PI / 180;
-
-      const dLon =
-        (lon2 - lon1) * Math.PI / 180;
-
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(lat1 * Math.PI / 180) *
-        Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) ** 2;
-
-      return R * (
-        2 * Math.atan2(
-          Math.sqrt(a),
-          Math.sqrt(1 - a)
-        )
-      );
-    }
-
-    // =====================================================
-    // SELECCIÓN AEROPUERTO
-    // =====================================================
-
-    function selectAirport(lat, lon) {
-
-      let best = null;
-      let bestScore = Infinity;
-
-      for (const ap of AIRPORTS) {
-
-        const dist = distanceKm(
-          lat,
-          lon,
-          ap.lat,
-          ap.lon
-        );
-
-        let score = dist;
-
-        score += Math.abs(ap.alt - 500) * 0.01;
-
-        if (score < bestScore) {
-          bestScore = score;
-          best = ap;
-        }
-      }
-
-      return best;
-    }
-
-    // =====================================================
-    // 🟢 METAR REAL
-    // =====================================================
-
-    let metar = {
-
-      temp: null,
-      station: "Sin datos"
-
-    };
-
-    try {
-
-      const airport =
-        selectAirport(baseLat, baseLon);
-
-      if (airport) {
-
-        const metarRes = await fetch(
-          `https://api.checkwx.com/metar/${airport.icao}/decoded`,
-          {
-            headers: {
-              "X-API-Key": CHECKWX_KEY
-            }
-          }
-        );
-
-        const metarData =
-          await metarRes.json();
-
-        const obs =
-          metarData?.data?.[0];
-
-        if (obs) {
-
-          metar = {
-
-            temp:
-              obs.temperature?.celsius ?? null,
-
-            station:
-              `${airport.name} (${airport.icao})`
-
-          };
-
-        } else {
-
-          metar.station =
-            "METAR sin datos";
-        }
-      }
-
-    } catch (e) {
-
-      metar.station =
-        "Error METAR";
-    }
-
-    // =====================================================
-    // 🟢 METEOSTAT (actual)
-    // =====================================================
-
-    let meteostat = {
-
-      temp: null,
-      desc: "Sin datos"
-
-    };
-
-    try {
-
-      meteostat = {
-
-        temp:
-          omData?.current_weather?.temperature ?? null,
-
-        desc:
-          "Dato actual disponible"
-
-      };
-
-    } catch {
-
-      meteostat.desc =
-        "Error Meteostat";
-    }
-
-    // =====================================================
     // CONSENSO
     // =====================================================
 
+    const observationTemps = [];
+
+    if (metar.usedInConsensus && metar.temp != null) {
+      observationTemps.push(metar.temp);
+    }
+
+    if (meteostat.usedInConsensus && meteostat.temp != null) {
+      observationTemps.push(meteostat.temp);
+    }
+
     const allTemps = [
-
       ...modelTemps,
-
-      metar.temp,
-
-      meteostat.temp
-
-    ].filter(t => t != null);
+      ...observationTemps
+    ];
 
     const consensus =
       allTemps.length
@@ -339,28 +440,26 @@ export default async function handler(req, res) {
           : "media",
 
       location: {
-		name: city || "Ubicación actual",
+        name: city || "Ubicación actual",
         lat: baseLat,
         lon: baseLon
-
       },
 
       models,
 
       observation: {
-
         metar
-
       },
 
       extra: {
-
         meteostat
-
       }
 
     };
 
+    setCachedResponse(cacheKey, result);
+
+    res.setHeader("X-Cache", "MISS");
     res.status(200).json(result);
 
   } catch (error) {
