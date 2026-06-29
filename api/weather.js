@@ -9,16 +9,12 @@ function getCacheKey(lat, lon) {
 
 function getCachedResponse(key) {
   const entry = cache.get(key);
-
-  if (!entry) {
-    return null;
-  }
+  if (!entry) return null;
 
   if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
     cache.delete(key);
     return null;
   }
-
   return entry.data;
 }
 
@@ -31,7 +27,6 @@ function setCachedResponse(key, data) {
 
 function distanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
-
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
 
@@ -46,17 +41,14 @@ function distanceKm(lat1, lon1, lat2, lon2) {
 
 function metarDistanceKm(obs, lat, lon) {
   const meters = obs?.position?.distance?.meters;
-
   if (typeof meters === "number") {
     return meters / 1000;
   }
 
   const coords = obs?.station?.geometry?.coordinates;
-
   if (coords?.length >= 2) {
     return distanceKm(lat, lon, coords[1], coords[0]);
   }
-
   return null;
 }
 
@@ -73,11 +65,7 @@ async function fetchNearestMetar(lat, lon, apiKey) {
 
   const metarRes = await fetch(
     `https://api.checkwx.com/v2/metar/lat/${lat}/lon/${lon}/decoded?limit=1`,
-    {
-      headers: {
-        "X-API-Key": apiKey
-      }
-    }
+    { headers: { "X-API-Key": apiKey } }
   );
 
   if (!metarRes.ok) {
@@ -104,33 +92,18 @@ async function fetchNearestMetar(lat, lon, apiKey) {
   }
 
   const distance = metarDistanceKm(obs, lat, lon);
-  const stationName =
-    obs.station?.name ??
-    obs.station?.icao ??
-    obs.icao ??
-    "Estación desconocida";
-
+  const stationName = obs.station?.name ?? obs.station?.icao ?? obs.icao ?? "Estación desconocida";
   const icao = obs.station?.icao ?? obs.icao ?? "";
-  const stationLabel = icao
-    ? `${stationName} (${icao})`
-    : stationName;
+  const stationLabel = icao ? `${stationName} (${icao})` : stationName;
 
-  const withinRange =
-    distance == null || distance <= METAR_MAX_DISTANCE_KM;
+  const withinRange = distance == null || distance <= METAR_MAX_DISTANCE_KM;
 
   return {
-    temp: withinRange
-      ? obs.temperature?.celsius ?? null
-      : null,
+    temp: withinRange ? obs.temperature?.celsius ?? null : null,
     station: stationLabel,
-    distanceKm:
-      distance != null
-        ? Number(distance.toFixed(1))
-        : null,
+    distanceKm: distance != null ? Number(distance.toFixed(1)) : null,
     usedInConsensus: withinRange,
-    note: withinRange
-      ? null
-      : `Estación a ${Math.round(distance)} km (>${METAR_MAX_DISTANCE_KM} km), excluida del consenso`
+    note: withinRange ? null : `Estación a ${Math.round(distance)} km (Excluida por distancia)`
   };
 }
 
@@ -145,10 +118,7 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
   };
 
   if (!apiKey) {
-    return {
-      ...empty,
-      desc: "Meteostat no configurado (METEOSTAT_KEY)"
-    };
+    return { ...empty, desc: "Meteostat no configurado (METEOSTAT_KEY)" };
   }
 
   const headers = {
@@ -161,22 +131,12 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
     { headers }
   );
 
-  if (!nearbyRes.ok) {
-    return {
-      ...empty,
-      desc: "Meteostat sin estación cercana"
-    };
-  }
+  if (!nearbyRes.ok) return { ...empty, desc: "Meteostat sin estación cercana" };
 
   const nearbyData = await nearbyRes.json();
   const station = nearbyData?.data?.[0];
 
-  if (!station) {
-    return {
-      ...empty,
-      desc: "Meteostat sin estación cercana"
-    };
-  }
+  if (!station) return { ...empty, desc: "Meteostat sin estación cercana" };
 
   const end = new Date();
   const start = new Date(end);
@@ -194,10 +154,7 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
     return {
       ...empty,
       station: station.name?.en ?? station.id,
-      distanceKm:
-        station.distance != null
-          ? Number((station.distance / 1000).toFixed(1))
-          : null,
+      distanceKm: station.distance != null ? Number((station.distance / 1000).toFixed(1)) : null,
       desc: "Meteostat sin observaciones recientes"
     };
   }
@@ -210,40 +167,25 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
     return {
       ...empty,
       station: station.name?.en ?? station.id,
-      distanceKm:
-        station.distance != null
-          ? Number((station.distance / 1000).toFixed(1))
-          : null,
+      distanceKm: station.distance != null ? Number((station.distance / 1000).toFixed(1)) : null,
       desc: "Meteostat sin observaciones recientes"
     };
   }
 
-  const stationDistanceKm =
-    station.distance != null
-      ? station.distance / 1000
-      : null;
-
-  const withinRange =
-    stationDistanceKm == null ||
-    stationDistanceKm <= METAR_MAX_DISTANCE_KM;
+  const stationDistanceKm = station.distance != null ? station.distance / 1000 : null;
+  const withinRange = stationDistanceKm == null || stationDistanceKm <= METAR_MAX_DISTANCE_KM;
 
   return {
     temp: withinRange ? latest.temp : null,
     station: station.name?.en ?? station.id,
-    distanceKm:
-      stationDistanceKm != null
-        ? Number(stationDistanceKm.toFixed(1))
-        : null,
+    distanceKm: stationDistanceKm != null ? Number(stationDistanceKm.toFixed(1)) : null,
     observedAt: latest.time ?? null,
-    desc: withinRange
-      ? "Observación de estación meteorológica"
-      : `Estación a ${Math.round(stationDistanceKm)} km (>${METAR_MAX_DISTANCE_KM} km), excluida del consenso`,
+    desc: withinRange ? "Observación activa de estación" : `Estación a ${Math.round(stationDistanceKm)} km (Excluida)`,
     usedInConsensus: withinRange
   };
 }
 
 export default async function handler(req, res) {
-
   const city = req.query.city;
   const latQuery = req.query.lat;
   const lonQuery = req.query.lon;
@@ -253,28 +195,21 @@ export default async function handler(req, res) {
   const METEOSTAT_KEY = process.env.METEOSTAT_KEY;
 
   try {
-
     // =====================================================
     // GEO BASE
     // =====================================================
-
     let baseLat = latQuery ? parseFloat(latQuery) : null;
     let baseLon = lonQuery ? parseFloat(lonQuery) : null;
 
     if (!baseLat || !baseLon) {
-
       const geoRes = await fetch(
         `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${OPENWEATHER_KEY}`
       );
-
       const geoData = await geoRes.json();
 
       if (!geoData?.length) {
-        return res.status(404).json({
-          error: "Ciudad no encontrada"
-        });
+        return res.status(404).json({ error: "Ciudad no encontrada" });
       }
-
       baseLat = geoData[0].lat;
       baseLon = geoData[0].lon;
     }
@@ -288,153 +223,79 @@ export default async function handler(req, res) {
     }
 
     // =====================================================
-    // FUENTES (paralelo)
+    // FUENTES (Paralelo)
     // =====================================================
-
-    const [
-      owRes,
-      omRes,
-      metRes,
-      metar,
-      meteostat
-    ] = await Promise.all([
-
-      fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&appid=${OPENWEATHER_KEY}`
-      ),
-
-      fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true`
-      ),
-
-      fetch(
-        `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`,
-        {
-          headers: {
-            "User-Agent": "central-clima"
-          }
-        }
-      ),
-
-      fetchNearestMetar(baseLat, baseLon, CHECKWX_KEY)
-        .catch(() => ({
-          temp: null,
-          station: "Error METAR",
-          distanceKm: null,
-          usedInConsensus: false,
-          note: null
-        })),
-
-      fetchMeteostatObservation(baseLat, baseLon, METEOSTAT_KEY)
-        .catch(() => ({
-          temp: null,
-          station: null,
-          distanceKm: null,
-          observedAt: null,
-          desc: "Error Meteostat",
-          usedInConsensus: false
-        }))
-
+    const [owRes, omRes, metRes, metar, meteostat] = await Promise.all([
+      fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&appid=${OPENWEATHER_KEY}`),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true`),
+      fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`, {
+        headers: { "User-Agent": "central-clima" }
+      }),
+      fetchNearestMetar(baseLat, baseLon, CHECKWX_KEY).catch(() => ({
+        temp: null, station: "Error METAR", distanceKm: null, usedInConsensus: false, note: null
+      })),
+      fetchMeteostatObservation(baseLat, baseLon, METEOSTAT_KEY).catch(() => ({
+        temp: null, station: null, distanceKm: null, observedAt: null, desc: "Error Meteostat", usedInConsensus: false
+      }))
     ]);
 
     const owData = owRes.ok ? await owRes.json() : null;
     const omData = omRes.ok ? await omRes.json() : null;
     const metData = metRes.ok ? await metRes.json() : null;
 
-    // =====================================================
-    // MODELOS
-    // =====================================================
+    // Resuelve el nombre real de la ciudad si la petición vino de coordenadas nativas
+    const resolvedCityName = city || owData?.name || "Ubicación actual";
 
+    // =====================================================
+    // MODELOS DATA MAPPING
+    // =====================================================
     const models = {
-
       sources: {
-
         openweather: {
-
           temp: owData?.main?.temp ?? null,
           humidity: owData?.main?.humidity ?? null,
           wind: owData?.wind?.speed ?? null,
           desc: owData?.weather?.[0]?.description ?? ""
-
         },
-
         openmeteo: {
-
           temp: omData?.current_weather?.temperature ?? null,
           wind: omData?.current_weather?.windspeed ?? null,
           desc: "Open-Meteo"
-
         },
-
         metno: {
-
-          temp:
-            metData?.properties?.timeseries?.[0]
-              ?.data?.instant?.details?.air_temperature ?? null,
-
-          humidity:
-            metData?.properties?.timeseries?.[0]
-              ?.data?.instant?.details?.relative_humidity ?? null,
-
-          wind:
-            metData?.properties?.timeseries?.[0]
-              ?.data?.instant?.details?.wind_speed ?? null,
-
+          temp: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature ?? null,
+          humidity: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.relative_humidity ?? null,
+          wind: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.wind_speed ?? null,
           desc: "MET Norway"
-
         }
-
       }
-
     };
 
-    const modelTemps = Object.values(models.sources)
-      .map(s => s.temp)
-      .filter(t => t != null);
-
+    const modelTemps = Object.values(models.sources).map(s => s.temp).filter(t => t != null);
     models.average = modelTemps.length
-      ? (
-          modelTemps.reduce((a, b) => a + b, 0)
-          / modelTemps.length
-        ).toFixed(1)
+      ? (modelTemps.reduce((a, b) => a + b, 0) / modelTemps.length).toFixed(1)
       : null;
 
     // =====================================================
     // CONSENSO
     // =====================================================
-
     const observationTemps = [];
+    if (metar.usedInConsensus && metar.temp != null) observationTemps.push(metar.temp);
+    if (meteostat.usedInConsensus && meteostat.temp != null) observationTemps.push(meteostat.temp);
 
-    if (metar.usedInConsensus && metar.temp != null) {
-      observationTemps.push(metar.temp);
-    }
-
-    if (meteostat.usedInConsensus && meteostat.temp != null) {
-      observationTemps.push(meteostat.temp);
-    }
-
-    const allTemps = [
-      ...modelTemps,
-      ...observationTemps
-    ];
-
-    const consensus =
-      allTemps.length
-        ? (
-            allTemps.reduce((a, b) => a + b, 0)
-            / allTemps.length
-          ).toFixed(1)
-        : null;
+    const allTemps = [...modelTemps, ...observationTemps];
+    const consensus = allTemps.length
+      ? (allTemps.reduce((a, b) => a + b, 0) / allTemps.length).toFixed(1)
+      : null;
 
     // =====================================================
     // 🤖 IA - CONSEJO DEL DÍA (Google Gemini)
     // =====================================================
     let ai_recommendation = "Consejo no disponible en este momento.";
     
-    // Necesitarás agregar GEMINI_API_KEY en las variables de entorno de Vercel
     if (process.env.GEMINI_API_KEY) {
       try {
-        const promptText = `Eres un asistente meteorológico local. El clima en ${city || "esta ubicación"} es de ${consensus}°C. Escribe un consejo muy breve (máximo 2 oraciones) y amigable sobre qué ropa usar y una actividad recomendada para hacer hoy.`;
+        const promptText = `Eres un asistente meteorológico local. El clima en ${resolvedCityName} es de ${consensus}°C. Escribe un consejo muy breve (máximo 2 oraciones) y amigable sobre qué ropa usar y una actividad recomendada para hacer hoy.`;
         
         const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
           method: 'POST',
@@ -447,41 +308,36 @@ export default async function handler(req, res) {
           ai_recommendation = aiData.candidates[0].content.parts[0].text;
         }
       } catch (error) {
-        console.error("Error consultando IA:", error);
+        console.error("Error consultando Gemini IA:", error);
       }
     }
 
     // =====================================================
-    // RESPONSE (Actualizado)
+    // RESPONSE OBJECT
     // =====================================================
     const result = {
       consensus,
       confidence: allTemps.length >= 4 ? "alta" : "media",
       location: {
-        name: city || "Ubicación actual",
+        name: resolvedCityName,
         lat: baseLat,
         lon: baseLon
       },
       models,
       observation: { metar },
       extra: { meteostat },
-      ai_recommendation // Añadimos el consejo de la IA aquí
+      ai_recommendation
     };
 
     setCachedResponse(cacheKey, result);
-
     res.setHeader("X-Cache", "MISS");
-    res.status(200).json(result);
+    return res.status(200).json(result);
     
   } catch (error) {
-
     console.error(error);
-
-    res.status(500).json({
-
+    return res.status(500).json({
       error: "Error backend",
       detail: error.message
-
     });
   }
 }

@@ -2,507 +2,339 @@
 <html lang="es">
 
 <head>
-
 <meta charset="UTF-8" />
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0"
-/>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Central de Clima</title>
 
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet/dist/leaflet.css"
-/>
-
-<link
-  rel="preconnect"
-  href="https://fonts.googleapis.com"
-/>
-
-<link
-  rel="preconnect"
-  href="https://fonts.gstatic.com"
-  crossorigin
-/>
-
-<link
-  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-  rel="stylesheet"
-/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
 <style>
-
 * {
-  box-sizing:border-box;
+  box-sizing: border-box;
 }
 
 body {
-
-  margin:0;
-  font-family:'Inter', sans-serif;
-
+  margin: 0;
+  font-family: 'Inter', sans-serif;
   background:
     linear-gradient(
-      rgba(6,11,25,.92),
-      rgba(6,11,25,.96)
+      rgba(6, 11, 25, 0.92),
+      rgba(6, 11, 25, 0.96)
     ),
     url('https://images.unsplash.com/photo-1501630834273-4b5604d2ee31?q=80&w=1600&auto=format&fit=crop');
-
-  background-size:cover;
-  background-position:center;
-  background-attachment:fixed;
-
-  color:white;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: white;
 }
 
 /* ====================================================== */
 /* HEADER */
 /* ====================================================== */
-
 .header {
-
-  position:sticky;
-  top:0;
-  z-index:999;
-
-  backdrop-filter:blur(18px);
-
-  background:rgba(8,15,30,.75);
-
-  border-bottom:1px solid rgba(255,255,255,.06);
-
-  padding:14px 24px;
-
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:20px;
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  backdrop-filter: blur(18px);
+  background: rgba(8, 15, 30, 0.75);
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
 }
 
 .logo-container {
-
-  display:flex;
-  align-items:center;
-  gap:14px;
-
-  min-width:260px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 260px;
 }
 
 .logo-container img {
-
-  height:190px;
-  width:auto;
-
-  object-fit:contain;
+  height: 60px;
+  width: auto;
+  object-fit: contain;
 }
 
 .logo-title {
-
-  display:flex;
-  flex-direction:column;
-  line-height:1;
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
 }
 
 .logo-title .top {
-
-  color:#78b8ff;
-  font-size:34px;
-  font-weight:700;
+  color: #78b8ff;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .logo-title .bottom {
-
-  color:#b8dc61;
-  font-size:34px;
-  font-weight:700;
+  color: #b8dc61;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 /* ====================================================== */
 /* SEARCH */
 /* ====================================================== */
-
 .search-wrapper {
-
-  width:100%;
-  max-width:650px;
-
-  position:relative;
+  width: 100%;
+  max-width: 650px;
+  position: relative;
 }
 
 .search-box {
-
-  display:flex;
-  align-items:center;
-
-  background:rgba(255,255,255,.12);
-
-  border:1px solid rgba(255,255,255,.08);
-
-  border-radius:18px;
-
-  overflow:hidden;
-
-  backdrop-filter:blur(12px);
-
-  transition:.2s;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  transition: 0.2s;
 }
 
 .search-box:focus-within {
-
-  border-color:#60a5fa;
-
-  box-shadow:
-    0 0 0 4px rgba(96,165,250,.15);
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15);
 }
 
 .search-icon {
-
-  padding-left:18px;
-
-  font-size:22px;
-  opacity:.7;
+  padding-left: 18px;
+  font-size: 22px;
+  opacity: 0.7;
 }
 
 .search-box input {
-
-  width:100%;
-
-  background:transparent;
-  border:none;
-  outline:none;
-
-  color:white;
-
-  font-size:17px;
-
-  padding:18px 16px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+  font-size: 17px;
+  padding: 18px 16px;
 }
 
 .search-box input::placeholder {
-  color:rgba(255,255,255,.55);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .search-btn {
-
-  border:none;
-
-  background:#3b82f6;
-
-  color:white;
-
-  padding:18px 22px;
-
-  cursor:pointer;
-
-  font-size:15px;
-  font-weight:600;
-
-  transition:.2s;
+  border: none;
+  background: #3b82f6;
+  color: white;
+  padding: 18px 22px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: 0.2s;
 }
 
 .search-btn:hover {
-
-  background:#2563eb;
+  background: #2563eb;
 }
 
 /* ====================================================== */
 /* AUTOCOMPLETE */
 /* ====================================================== */
-
 .autocomplete {
-
-  position:absolute;
-
-  top:76px;
-  left:0;
-  right:0;
-
-  background:rgba(18,25,42,.98);
-
-  border-radius:18px;
-
-  overflow:hidden;
-
-  border:1px solid rgba(255,255,255,.06);
-
-  backdrop-filter:blur(18px);
-
-  box-shadow:
-    0 20px 60px rgba(0,0,0,.35);
-
-  display:none;
+  position: absolute;
+  top: 76px;
+  left: 0;
+  right: 0;
+  background: rgba(18, 25, 42, 0.98);
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+  display: none;
 }
 
 .autocomplete-item {
-
-  padding:16px 20px;
-
-  cursor:pointer;
-
-  border-bottom:
-    1px solid rgba(255,255,255,.05);
-
-  transition:.15s;
+  padding: 16px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: 0.15s;
 }
 
 .autocomplete-item:hover {
-
-  background:
-    rgba(255,255,255,.06);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .autocomplete-name {
-
-  font-size:16px;
-  font-weight:600;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .autocomplete-detail {
-
-  margin-top:4px;
-
-  color:#9fb0c7;
-
-  font-size:13px;
+  margin-top: 4px;
+  color: #9fb0c7;
+  font-size: 13px;
 }
 
 /* ====================================================== */
 /* CONTENT */
 /* ====================================================== */
-
 .container {
-
-  max-width:1250px;
-
-  margin:auto;
-
-  padding:24px;
+  max-width: 1250px;
+  margin: auto;
+  padding: 24px;
 }
 
 /* ====================================================== */
 /* MAIN CARD */
 /* ====================================================== */
-
 .main-card {
-
-  background:
-    rgba(18,25,42,.82);
-
-  border:
-    1px solid rgba(255,255,255,.06);
-
-  border-radius:26px;
-
-  padding:28px;
-
-  backdrop-filter:blur(14px);
-
-  box-shadow:
-    0 10px 40px rgba(0,0,0,.25);
-
-  margin-bottom:24px;
+  background: rgba(18, 25, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 26px;
+  padding: 28px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  margin-bottom: 24px;
 }
 
 .temp-main {
-
-  font-size:74px;
-  font-weight:700;
-
-  margin:0;
+  font-size: 74px;
+  font-weight: 700;
+  margin: 0;
 }
 
 .confidence {
-
-  margin-top:8px;
-
-  color:#9cc6ff;
-
-  font-size:18px;
+  margin-top: 8px;
+  color: #9cc6ff;
+  font-size: 18px;
 }
 
 .temp-row {
-
-  display:flex;
-  align-items:center;
-  gap:24px;
-
-  flex-wrap:wrap;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
 }
 
 .location-main {
-
-  font-size:32px;
-  font-weight:600;
-
-  color:#bcd3ee;
+  font-size: 32px;
+  font-weight: 600;
+  color: #bcd3ee;
 }
 
 /* ====================================================== */
 /* GRID */
 /* ====================================================== */
-
 .grid {
-
-  display:grid;
-
-  grid-template-columns:
-    1.4fr .9fr;
-
-  gap:24px;
-
-  margin-bottom:24px;
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr;
+  gap: 24px;
+  margin-bottom: 24px;
 }
 
 .info-box {
-
-  background:
-    rgba(18,25,42,.82);
-
-  border:
-    1px solid rgba(255,255,255,.06);
-
-  border-radius:24px;
-
-  padding:26px;
-
-  min-height:260px;
+  background: rgba(18, 25, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  padding: 26px;
+  min-height: 260px;
 }
 
 .info-line {
-
-  font-size:20px;
-
-  margin-bottom:14px;
+  font-size: 20px;
+  margin-bottom: 14px;
 }
 
 #map {
-
-  height:260px;
-
-  border-radius:24px;
-
-  overflow:hidden;
-
-  border:
-    1px solid rgba(255,255,255,.06);
+  height: 260px;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* ====================================================== */
 /* API CARDS */
 /* ====================================================== */
-
 .api-grid {
-
-  display:grid;
-
-  grid-template-columns:
-    repeat(auto-fit,minmax(240px,1fr));
-
-  gap:18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
 }
 
 .api-card {
-
-  background:
-    rgba(18,25,42,.82);
-
-  border:
-    1px solid rgba(255,255,255,.06);
-
-  border-radius:22px;
-
-  padding:22px;
-
-  backdrop-filter:blur(12px);
-
-  transition:.2s;
+  background: rgba(18, 25, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 22px;
+  padding: 22px;
+  backdrop-filter: blur(12px);
+  transition: 0.2s;
 }
 
 .api-card:hover {
-
-  transform:translateY(-4px);
-
-  box-shadow:
-    0 12px 40px rgba(0,0,0,.25);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
 }
 
 .api-title {
-
-  font-size:18px;
-  font-weight:700;
-
-  margin-bottom:18px;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 18px;
 }
 
 .api-temp {
-
-  font-size:38px;
-  font-weight:700;
-
-  margin-bottom:12px;
+  font-size: 38px;
+  font-weight: 700;
+  margin-bottom: 12px;
 }
 
 .api-detail {
-
-  color:#c0d4ea;
-
-  margin-bottom:8px;
-
-  font-size:14px;
+  color: #c0d4ea;
+  margin-bottom: 8px;
+  font-size: 14px;
 }
 
 .ok {
-  color:#22c55e;
+  color: #22c55e;
 }
 
 .error {
-  color:#ef4444;
+  color: #ef4444;
 }
 
 /* ====================================================== */
 /* MOBILE */
 /* ====================================================== */
-
-@media(max-width:900px){
-
+@media(max-width:900px) {
   .header {
-
-    flex-direction:column;
-    align-items:flex-start;
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .search-wrapper {
-
-    max-width:100%;
+    max-width: 100%;
   }
 
   .grid {
-
-    grid-template-columns:1fr;
+    grid-template-columns: 1fr;
   }
 
   .temp-main {
-
-    font-size:52px;
+    font-size: 52px;
   }
 
   .logo-container img {
-
-    height:48px;
+    height: 48px;
   }
 
   .logo-title .top,
   .logo-title .bottom {
-
-    font-size:28px;
+    font-size: 28px;
   }
 }
-
 </style>
-
 </head>
 
 <body>
@@ -510,144 +342,77 @@ body {
 <!-- ====================================================== -->
 <!-- HEADER -->
 <!-- ====================================================== -->
-
 <div class="header">
-
   <div class="logo-container">
-
     <img class="logo" src="logo.png" alt="Central de Clima">
-
+    <div class="logo-title">
+      <span class="top">Central</span>
+      <span class="bottom">de Clima</span>
+    </div>
   </div>
 
   <div class="search-wrapper">
-
     <div class="search-box">
-
-      <div class="search-icon">
-      </div>
-
-      <input
-        id="city"
-        placeholder="Buscar ciudad o ubicaci�n..."
-        autocomplete="off"
-      />
-
-      <button
-        class="search-btn"
-        onclick="buscarManual()"
-      >
-        Consultar
-      </button>
-
+      <div class="search-icon"></div>
+      <input id="city" placeholder="Buscar ciudad o ubicación..." autocomplete="off" />
+      <button class="search-btn" onclick="buscarManual()">Consultar</button>
     </div>
-
-    <div
-      id="autocomplete"
-      class="autocomplete"
-    ></div>
-
+    <div id="autocomplete" class="autocomplete"></div>
   </div>
-
 </div>
 
 <!-- ====================================================== -->
 <!-- CONTENT -->
 <!-- ====================================================== -->
-
 <div class="container">
 
   <!-- MAIN -->
-
   <div class="main-card">
-
     <div class="temp-row">
-
-	  <h1 id="temp" class="temp-main">
-		-- &deg;C
-	  </h1>
-
-	  <div id="locationName" class="location-main">
-		Cargando ubicaci�n...
-	  </div>
-
-	</div>
-
-    <div
-      id="confidence"
-      class="confidence"
-    ></div>
-
+      <h1 id="temp" class="temp-main">-- &deg;C</h1>
+      <div id="locationName" class="location-main">Cargando ubicación...</div>
+    </div>
+    <div id="confidence" class="confidence"></div>
+    <!-- Contenedor estático para la recomendación de IA y AdSense -->
+    <div id="ai-container"></div>
   </div>
 
   <!-- GRID -->
-
   <div class="grid">
-
     <div class="info-box">
-
-      <div
-        id="avg"
-        class="info-line"
-      ></div>
-
-      <div
-        id="sources"
-        class="info-line"
-      ></div>
-
+      <div id="avg" class="info-line"></div>
+      <div id="sources" class="info-line"></div>
     </div>
-
     <div id="map"></div>
-
   </div>
 
   <!-- APIs -->
-
-  <div
-    class="api-grid"
-    id="apis"
-  ></div>
+  <div class="api-grid" id="apis"></div>
 
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-
 let map;
 let marker;
 
 let selectedLat = null;
 let selectedLon = null;
-
 let selectedLocationName = "";
 
 /* ====================================================== */
 /* MAP */
 /* ====================================================== */
-
 function initMap(lat, lon) {
-
   if (!map) {
-
-    map = L.map("map")
-      .setView([lat, lon], 10);
-
-    L.tileLayer(
-      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-      {
-        attribution:"? OpenStreetMap"
-      }
-    ).addTo(map);
-
-    marker =
-      L.marker([lat, lon])
-        .addTo(map);
-
+    map = L.map("map").setView([lat, lon], 10);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap"
+    }).addTo(map);
+    marker = L.marker([lat, lon]).addTo(map);
   } else {
-
     map.setView([lat, lon], 10);
-
     marker.setLatLng([lat, lon]);
   }
 }
@@ -655,191 +420,106 @@ function initMap(lat, lon) {
 /* ====================================================== */
 /* AUTO LOCATION */
 /* ====================================================== */
-
 window.onload = () => {
-
   if (navigator.geolocation) {
-
-    navigator.geolocation
-      .getCurrentPosition(pos => {
-
-        cargar(
-          pos.coords.latitude,
-          pos.coords.longitude
-        );
-
-      });
+    navigator.geolocation.getCurrentPosition(pos => {
+      cargar(pos.coords.latitude, pos.coords.longitude);
+    });
   }
 };
 
 /* ====================================================== */
 /* AUTOCOMPLETE */
 /* ====================================================== */
+const cityInput = document.getElementById("city");
+const autocomplete = document.getElementById("autocomplete");
 
-const cityInput =
-  document.getElementById("city");
+cityInput.addEventListener("input", async (e) => {
+  // Al escribir de nuevo, limpiamos coordenadas antiguas para forzar búsqueda de texto nueva si no se elige sugerencia
+  selectedLat = null;
+  selectedLon = null;
+  selectedLocationName = "";
 
-const autocomplete =
-  document.getElementById("autocomplete");
-
-cityInput.addEventListener(
-  "input",
-  async (e) => {
-
-    const q =
-      e.target.value.trim();
-
-    if (q.length < 3) {
-
-      autocomplete.style.display =
-        "none";
-
-      return;
-    }
-
-    try {
-
-      const res = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6`
-      );
-
-      const data =
-        await res.json();
-
-      autocomplete.innerHTML = "";
-
-      data.features.forEach(item => {
-
-        const name =
-          item.properties.name || "";
-
-        const city =
-          item.properties.city || "";
-
-        const state =
-          item.properties.state || "";
-
-        const country =
-          item.properties.country || "";
-
-        const lon =
-          item.geometry.coordinates[0];
-
-        const lat =
-          item.geometry.coordinates[1];
-
-        const div =
-          document.createElement("div");
-
-        div.className =
-          "autocomplete-item";
-
-        div.innerHTML = `
-
-          <div class="autocomplete-name">
-            ${name}
-          </div>
-
-          <div class="autocomplete-detail">
-            ${city} ${state} ${country}
-          </div>
-
-        `;
-
-        div.onclick = () => {
-
-          cityInput.value =
-            `${name}, ${state}, ${country}`;
-
-          selectedLat = lat;
-          selectedLon = lon;
-		  
-		  selectedLocationName =
-			`${name}${state ? ", " + state : ""}${country ? ", " + country : ""}`
-
-          autocomplete.style.display =
-            "none";
-
-          cargar(lat, lon);
-        };
-
-        autocomplete.appendChild(div);
-      });
-
-      autocomplete.style.display =
-        data.features.length
-          ? "block"
-          : "none";
-
-    } catch(e){}
+  const q = e.target.value.trim();
+  if (q.length < 3) {
+    autocomplete.style.display = "none";
+    return;
   }
-);
 
-document.addEventListener(
-  "click",
-  (e) => {
+  try {
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6`);
+    const data = await res.json();
+    autocomplete.innerHTML = "";
 
-    if (
-      !autocomplete.contains(e.target)
-      &&
-      e.target !== cityInput
-    ) {
+    data.features.forEach(item => {
+      const name = item.properties.name || "";
+      const city = item.properties.city || "";
+      const state = item.properties.state || "";
+      const country = item.properties.country || "";
+      const lon = item.geometry.coordinates[0];
+      const lat = item.geometry.coordinates[1];
 
-      autocomplete.style.display =
-        "none";
-    }
+      const div = document.createElement("div");
+      div.className = "autocomplete-item";
+      div.innerHTML = `
+        <div class="autocomplete-name">${name}</div>
+        <div class="autocomplete-detail">
+          ${city} ${state ? state + ", " : ""}${country}
+        </div>
+      `;
+
+      div.onclick = () => {
+        cityInput.value = `${name}${city ? ", " + city : ""}, ${country}`;
+        selectedLat = lat;
+        selectedLon = lon;
+        selectedLocationName = `${name}${state ? ", " + state : ""}${country ? ", " + country : ""}`;
+        autocomplete.style.display = "none";
+        cargar(lat, lon);
+      };
+
+      autocomplete.appendChild(div);
+    });
+
+    autocomplete.style.display = data.features.length ? "block" : "none";
+  } catch (e) {
+    console.error("Error en autocompletado:", e);
   }
-);
+});
+
+document.addEventListener("click", (e) => {
+  if (!autocomplete.contains(e.target) && e.target !== cityInput) {
+    autocomplete.style.display = "none";
+  }
+});
 
 /* ====================================================== */
 /* SEARCH */
 /* ====================================================== */
-
 function buscarManual() {
-
-  if (
-    selectedLat != null &&
-    selectedLon != null
-  ) {
-
-    cargar(
-      selectedLat,
-      selectedLon
-    );
-
+  if (selectedLat != null && selectedLon != null) {
+    cargar(selectedLat, selectedLon);
     return;
   }
 
-  const city =
-    cityInput.value.trim();
-
+  const city = cityInput.value.trim();
   if (!city) return;
 
-  fetch(
-    `/api/weather?city=${encodeURIComponent(city)}`
-  )
+  // Si busca por texto puro, dejamos que el backend resuelva el nombre correcto
+  selectedLocationName = "";
+
+  fetch(`/api/weather?city=${encodeURIComponent(city)}`)
     .then(r => r.json())
     .then(data => {
-
       render(data);
-
-      initMap(
-        data.location.lat,
-        data.location.lon
-      );
+      initMap(data.location.lat, data.location.lon);
     });
 }
 
 function cargar(lat, lon) {
-
-  fetch(
-    `/api/weather?lat=${lat}&lon=${lon}`
-  )
+  fetch(`/api/weather?lat=${lat}&lon=${lon}`)
     .then(r => r.json())
     .then(data => {
-
       render(data);
-
       initMap(lat, lon);
     });
 }
@@ -847,43 +527,22 @@ function cargar(lat, lon) {
 /* ====================================================== */
 /* RENDER */
 /* ====================================================== */
-
 function render(data) {
+  document.getElementById("temp").innerHTML =
+    data.consensus != null ? `${data.consensus} &deg;C` : "-- &deg;C";
 
-  document.getElementById("temp")
-    .innerHTML =
+  document.getElementById("confidence").innerText = `Confianza: ${data.confidence}`;
 
-    data.consensus != null
-      ? `${data.consensus} &deg;C`
-      : "-- &deg;C";
+  document.getElementById("avg").innerHTML =
+    `Temperatura promedio modelos: ${data.models.average ?? "-"} &deg;C`;
 
-  document.getElementById("confidence")
-    .innerText =
+  document.getElementById("sources").innerHTML =
+    `Fuentes activas: ${Object.values(data.models.sources).filter(s => s.temp != null).length}`;
 
-    `Confianza: ${data.confidence}`;
-
-  document.getElementById("avg")
-    .innerHTML =
-
-    `Temperatura promedio modelos:
-    ${data.models.average ?? "-"} &deg;C`;
-
-  document.getElementById("sources")
-    .innerHTML =
-
-    `Fuentes activas:
-    ${
-      Object.values(data.models.sources)
-        .filter(s => s.temp != null)
-        .length
-    }`;
-	
   document.getElementById("locationName").innerText =
-	  selectedLocationName ||
-	  data.location?.name ||
-	  "Ubicaci�n desconocida";
+    selectedLocationName || data.location?.name || "Ubicación desconocida";
 
-  // Actualizar la tarjeta de IA
+  // Inyección de Tarjeta de Inteligencia Artificial + Google AdSense
   const aiCardHTML = `
     <div style="background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 16px; padding: 20px; margin-top: 20px;">
       <h3 style="margin: 0 0 10px 0; color: #60a5fa; font-size: 18px;">💡 Consejo del Día</h3>
@@ -891,122 +550,55 @@ function render(data) {
     </div>
     
     <!-- ESPACIO RESERVADO PARA GOOGLE ADSENSE -->
-    <div style="width: 100%; height: 90px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; margin-top: 20px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4);">
+    <div style="width: 100%; height: 90px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; margin-top: 20px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4); font-size: 14px;">
       Espacio reservado para AdSense (728x90)
     </div>
   `;
-  
-  // Asegúrate de tener un div con id="ai-container" dentro de tu div "main-card" en el HTML
-  // Si no lo tienes, puedes inyectarlo directamente en el DOM así:
-  let aiContainer = document.getElementById("ai-container");
-  if (!aiContainer) {
-    aiContainer = document.createElement("div");
-    aiContainer.id = "ai-container";
-    document.querySelector(".main-card").appendChild(aiContainer);
-  }
-  aiContainer.innerHTML = aiCardHTML;
+  document.getElementById("ai-container").innerHTML = aiCardHTML;
 
-  const container =
-    document.getElementById("apis");
-
+  const container = document.getElementById("apis");
   container.innerHTML = "";
 
-  // ======================================================
   // MODELOS
-  // ======================================================
-
   const names = {
-
-    openweather:"OpenWeather",
-    openmeteo:"Open-Meteo",
-    metno:"MET Norway"
+    openweather: "OpenWeather",
+    openmeteo: "Open-Meteo",
+    metno: "MET Norway"
   };
 
   for (const key in data.models.sources) {
-
-    const s =
-      data.models.sources[key];
-
+    const s = data.models.sources[key];
     container.innerHTML += `
-
       <div class="api-card">
-
-        <div class="api-title">
-          ${names[key]}
-        </div>
-
-        <div class="api-temp">
-          ${s.temp ?? "-"} &deg;C
-        </div>
-
-        <div class="api-detail">
-          Humedad:
-          ${s.humidity ?? "-"}
-        </div>
-
-        <div class="api-detail">
-          Viento:
-          ${s.wind ?? "-"}
-        </div>
-
-        <div class="api-detail ok">
-          ${s.desc ?? ""}
-        </div>
-
+        <div class="api-title">${names[key]}</div>
+        <div class="api-temp">${s.temp ?? "-"} &deg;C</div>
+        <div class="api-detail">Humedad: ${s.humidity ?? "-"}%</div>
+        <div class="api-detail">Viento: ${s.wind ?? "-"} m/s</div>
+        <div class="api-detail ok">${s.desc ?? ""}</div>
       </div>
-
     `;
   }
 
-  // ======================================================
   // METAR
-  // ======================================================
-
   container.innerHTML += `
-
     <div class="api-card">
-
-      <div class="api-title">
-        METAR
-      </div>
-
-      <div class="api-temp">
-        ${data.observation.metar.temp ?? "-"} &deg;C
-      </div>
-
-      <div class="api-detail">
-        ${data.observation.metar.station}
-      </div>
-
+      <div class="api-title">METAR</div>
+      <div class="api-temp">${data.observation.metar.temp ?? "-"} &deg;C</div>
+      <div class="api-detail">${data.observation.metar.station}</div>
+      <div class="api-detail">${data.observation.metar.note ?? "Estación en rango"}</div>
     </div>
-
   `;
 
-  // ======================================================
   // METEOSTAT
-  // ======================================================
-
   container.innerHTML += `
-
     <div class="api-card">
-
-      <div class="api-title">
-        Meteostat
-      </div>
-
-      <div class="api-temp">
-        ${data.extra.meteostat.temp ?? "-"} &deg;C
-      </div>
-
-      <div class="api-detail">
-        ${data.extra.meteostat.desc}
-      </div>
-
+      <div class="api-title">Meteostat</div>
+      <div class="api-temp">${data.extra.meteostat.temp ?? "-"} &deg;C</div>
+      <div class="api-detail">${data.extra.meteostat.station || "Sin estación"}</div>
+      <div class="api-detail">${data.extra.meteostat.desc}</div>
     </div>
-
   `;
 }
-
 </script>
 
 </body>
