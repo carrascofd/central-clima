@@ -427,41 +427,52 @@ export default async function handler(req, res) {
         : null;
 
     // =====================================================
-    // RESPONSE
+    // 🤖 IA - CONSEJO DEL DÍA (Google Gemini)
     // =====================================================
+    let ai_recommendation = "Consejo no disponible en este momento.";
+    
+    // Necesitarás agregar GEMINI_API_KEY en las variables de entorno de Vercel
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const promptText = `Eres un asistente meteorológico local. El clima en ${city || "esta ubicación"} es de ${consensus}°C. Escribe un consejo muy breve (máximo 2 oraciones) y amigable sobre qué ropa usar y una actividad recomendada para hacer hoy.`;
+        
+        const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+        });
+        
+        const aiData = await aiRes.json();
+        if (aiData.candidates && aiData.candidates.length > 0) {
+          ai_recommendation = aiData.candidates[0].content.parts[0].text;
+        }
+      } catch (error) {
+        console.error("Error consultando IA:", error);
+      }
+    }
 
+    // =====================================================
+    // RESPONSE (Actualizado)
+    // =====================================================
     const result = {
-
       consensus,
-
-      confidence:
-        allTemps.length >= 4
-          ? "alta"
-          : "media",
-
+      confidence: allTemps.length >= 4 ? "alta" : "media",
       location: {
         name: city || "Ubicación actual",
         lat: baseLat,
         lon: baseLon
       },
-
       models,
-
-      observation: {
-        metar
-      },
-
-      extra: {
-        meteostat
-      }
-
+      observation: { metar },
+      extra: { meteostat },
+      ai_recommendation // Añadimos el consejo de la IA aquí
     };
 
     setCachedResponse(cacheKey, result);
 
     res.setHeader("X-Cache", "MISS");
     res.status(200).json(result);
-
+    
   } catch (error) {
 
     console.error(error);

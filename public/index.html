@@ -528,7 +528,7 @@ body {
 
       <input
         id="city"
-        placeholder="Buscar ciudad o ubicación..."
+        placeholder="Buscar ciudad o ubicaciï¿½n..."
         autocomplete="off"
       />
 
@@ -567,7 +567,7 @@ body {
 	  </h1>
 
 	  <div id="locationName" class="location-main">
-		Cargando ubicación...
+		Cargando ubicaciï¿½n...
 	  </div>
 
 	</div>
@@ -881,7 +881,30 @@ function render(data) {
   document.getElementById("locationName").innerText =
 	  selectedLocationName ||
 	  data.location?.name ||
-	  "Ubicación desconocida";
+	  "Ubicaciï¿½n desconocida";
+
+  // Actualizar la tarjeta de IA
+  const aiCardHTML = `
+    <div style="background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 16px; padding: 20px; margin-top: 20px;">
+      <h3 style="margin: 0 0 10px 0; color: #60a5fa; font-size: 18px;">ðŸ’¡ Consejo del DÃ­a</h3>
+      <p style="margin: 0; font-size: 16px; line-height: 1.5;">${data.ai_recommendation || "Cargando consejo..."}</p>
+    </div>
+    
+    <!-- ESPACIO RESERVADO PARA GOOGLE ADSENSE -->
+    <div style="width: 100%; height: 90px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; margin-top: 20px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4);">
+      Espacio reservado para AdSense (728x90)
+    </div>
+  `;
+  
+  // AsegÃºrate de tener un div con id="ai-container" dentro de tu div "main-card" en el HTML
+  // Si no lo tienes, puedes inyectarlo directamente en el DOM asÃ­:
+  let aiContainer = document.getElementById("ai-container");
+  if (!aiContainer) {
+    aiContainer = document.createElement("div");
+    aiContainer.id = "ai-container";
+    document.querySelector(".main-card").appendChild(aiContainer);
+  }
+  aiContainer.innerHTML = aiCardHTML;
 
   const container =
     document.getElementById("apis");
