@@ -223,11 +223,11 @@ export default async function handler(req, res) {
     }
 
     // =====================================================
-    // FUENTES (Paralelo)
+    // FUENTES PARALELAS (Open-Meteo ahora pide 3 días extendidos)
     // =====================================================
     const [owRes, omRes, metRes, metar, meteostat] = await Promise.all([
       fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&appid=${OPENWEATHER_KEY}`),
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true`),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=3&timezone=auto`),
       fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`, {
         headers: { "User-Agent": "central-clima" }
       }),
@@ -243,8 +243,22 @@ export default async function handler(req, res) {
     const omData = omRes.ok ? await omRes.json() : null;
     const metData = metRes.ok ? await metRes.json() : null;
 
-    // Resuelve el nombre real de la ciudad si la petición vino de coordenadas nativas
     const resolvedCityName = city || owData?.name || "Ubicación actual";
+
+    // =====================================================
+    // PROCESAMIENTO PRONÓSTICO EXTENDIDO DIARIO (3 DÍAS)
+    // =====================================================
+    const dailyForecast = [];
+    if (omData?.daily) {
+      for (let i = 0; i < omData.daily.time.length; i++) {
+        dailyForecast.push({
+          date: omData.daily.time[i],
+          max: omData.daily.temperature_2m_max?.[i] ?? null,
+          min: omData.daily.temperature_2m_min?.[i] ?? null,
+          code: omData.daily.weather_code?.[i] ?? null
+        });
+      }
+    }
 
     // =====================================================
     // MODELOS DATA MAPPING
@@ -289,13 +303,15 @@ export default async function handler(req, res) {
       : null;
 
     // =====================================================
-    // 🤖 IA - CONSEJO DEL DÍA (Google Gemini)
+    // 🤖 GEMINI IA - UN SOLO VIAJE CON PRONÓSTICO EXTENDIDO
     // =====================================================
     let ai_recommendation = "Consejo no disponible en este momento.";
     
     if (process.env.GEMINI_API_KEY) {
       try {
-        const promptText = `Eres un asistente meteorológico local. El clima en ${resolvedCityName} es de ${consensus}°C. Escribe un consejo muy breve (máximo 2 oraciones) y amigable sobre qué ropa usar y una actividad recomendada para hacer hoy.`;
+        const forecastSummary = dailyForecast.map(d => `Fecha ${d.date}: Mín ${d.min}°C, Máx ${d.max}°C`).join("; ");
+        
+        const promptText = `Eres un asistente meteorológico local experto. El clima actual en ${resolvedCityName} es de ${consensus}°C de consenso. Además, el pronóstico para los próximos 3 días es: ${forecastSummary}. Redacta un consejo amigable y conciso (máximo 2 oraciones en total) indicando qué tipo de ropa usar hoy y qué actividad o precaución considerar para los días venideros según la tendencia de temperaturas.`;
         
         const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
           method: 'POST',
@@ -326,7 +342,8 @@ export default async function handler(req, res) {
       models,
       observation: { metar },
       extra: { meteostat },
-      ai_recommendation
+      ai_recommendation,
+      daily: dailyForecast // Inyectamos el array para renderizar los cards por día
     };
 
     setCachedResponse(cacheKey, result);

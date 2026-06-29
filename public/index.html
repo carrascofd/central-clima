@@ -11,6 +11,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
+<script src="https://unpkg.com/lucide@latest"></script>
+
 <style>
 * {
   box-sizing: border-box;
@@ -32,7 +34,7 @@ body {
 }
 
 /* ====================================================== */
-/* HEADER */
+/* HEADER REESTRUCTURADO */
 /* ====================================================== */
 .header {
   position: sticky;
@@ -84,7 +86,7 @@ body {
 /* ====================================================== */
 .search-wrapper {
   width: 100%;
-  max-width: 650px;
+  max-width: 450px;
   position: relative;
 }
 
@@ -106,7 +108,9 @@ body {
 
 .search-icon {
   padding-left: 18px;
-  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.7;
 }
 
@@ -116,8 +120,8 @@ body {
   border: none;
   outline: none;
   color: white;
-  font-size: 17px;
-  padding: 18px 16px;
+  font-size: 16px;
+  padding: 14px 14px;
 }
 
 .search-box input::placeholder {
@@ -128,7 +132,7 @@ body {
   border: none;
   background: #3b82f6;
   color: white;
-  padding: 18px 22px;
+  padding: 14px 20px;
   cursor: pointer;
   font-size: 15px;
   font-weight: 600;
@@ -144,7 +148,7 @@ body {
 /* ====================================================== */
 .autocomplete {
   position: absolute;
-  top: 76px;
+  top: 60px;
   left: 0;
   right: 0;
   background: rgba(18, 25, 42, 0.98);
@@ -154,6 +158,7 @@ body {
   backdrop-filter: blur(18px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
   display: none;
+  z-index: 1000;
 }
 
 .autocomplete-item {
@@ -226,7 +231,53 @@ body {
 }
 
 /* ====================================================== */
-/* GRID */
+/* PRONOSTICO EXTENDIDO GRID */
+/* ====================================================== */
+.forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.forecast-card {
+  background: rgba(18, 25, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 22px;
+  padding: 20px;
+  text-align: center;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.forecast-date {
+  font-size: 16px;
+  font-weight: 600;
+  color: #9cc6ff;
+  margin-bottom: 12px;
+}
+
+.forecast-icon {
+  margin: 14px 0;
+  color: #fdba74;
+  display: flex;
+  justify-content: center;
+}
+
+.forecast-temps {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.forecast-temps .min {
+  color: #9fb0c7;
+  font-weight: 400;
+  font-size: 15px;
+  margin-left: 8px;
+}
+
+/* ====================================================== */
+/* GRID GENERAL */
 /* ====================================================== */
 .grid {
   display: grid;
@@ -305,7 +356,7 @@ body {
 }
 
 /* ====================================================== */
-/* MOBILE */
+/* RESPONSIVE MÓVIL */
 /* ====================================================== */
 @media(max-width:900px) {
   .header {
@@ -325,13 +376,9 @@ body {
     font-size: 52px;
   }
 
-  .logo-container img {
-    height: 48px;
-  }
-
   .logo-title .top,
   .logo-title .bottom {
-    font-size: 28px;
+    font-size: 24px;
   }
 }
 </style>
@@ -339,22 +386,20 @@ body {
 
 <body>
 
-<!-- ====================================================== -->
-<!-- HEADER -->
-<!-- ====================================================== -->
 <div class="header">
-    <div class="logo-container">
-      <img class="logo" src="logo.png" alt="⛅" style="height: 48px; width: auto;">
-      <div class="logo-title">
-        <span class="top">Central</span>
-        <span class="bottom">de Clima</span>
-      </div>
+  <div class="logo-container">
+    <img class="logo" src="logo.png" alt="⛅">
+    <div class="logo-title">
+      <span class="top">Central</span>
+      <span class="bottom">de Clima</span>
     </div>
   </div>
 
   <div class="search-wrapper">
     <div class="search-box">
-      <div class="search-icon"></div>
+      <div class="search-icon">
+        <i data-lucide="search" style="width: 18px; height: 18px;"></i>
+      </div>
       <input id="city" placeholder="Buscar ciudad o ubicación..." autocomplete="off" />
       <button class="search-btn" onclick="buscarManual()">Consultar</button>
     </div>
@@ -362,23 +407,20 @@ body {
   </div>
 </div>
 
-<!-- ====================================================== -->
-<!-- CONTENT -->
-<!-- ====================================================== -->
 <div class="container">
 
-  <!-- MAIN -->
   <div class="main-card">
     <div class="temp-row">
       <h1 id="temp" class="temp-main">-- &deg;C</h1>
       <div id="locationName" class="location-main">Cargando ubicación...</div>
     </div>
     <div id="confidence" class="confidence"></div>
-    <!-- Contenedor estático para la recomendación de IA y AdSense -->
     <div id="ai-container"></div>
   </div>
 
-  <!-- GRID -->
+  <h2 style="font-size: 22px; margin: 24px 0 14px 0; color: #bcd3ee; font-weight: 600;">📅 Pronóstico por Día</h2>
+  <div class="forecast-grid" id="forecast"></div>
+
   <div class="grid">
     <div class="info-box">
       <div id="avg" class="info-line"></div>
@@ -387,7 +429,6 @@ body {
     <div id="map"></div>
   </div>
 
-  <!-- APIs -->
   <div class="api-grid" id="apis"></div>
 
 </div>
@@ -402,9 +443,7 @@ let selectedLat = null;
 let selectedLon = null;
 let selectedLocationName = "";
 
-/* ====================================================== */
-/* MAP */
-/* ====================================================== */
+/* MAP INIT */
 function initMap(lat, lon) {
   if (!map) {
     map = L.map("map").setView([lat, lon], 10);
@@ -418,9 +457,7 @@ function initMap(lat, lon) {
   }
 }
 
-/* ====================================================== */
-/* AUTO LOCATION */
-/* ====================================================== */
+/* GEOLOCATION */
 window.onload = () => {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => {
@@ -429,14 +466,35 @@ window.onload = () => {
   }
 };
 
-/* ====================================================== */
-/* AUTOCOMPLETE */
-/* ====================================================== */
+/* FUNCIÓN AUXILIAR: ASIGNADOR DE ICONOS LUCIDE */
+function getWeatherIcon(descOrCode) {
+  if (typeof descOrCode === 'number') {
+    // Códigos estándar WMO de Open-Meteo
+    const code = descOrCode;
+    if (code === 0) return "sun";
+    if ([1, 2, 3].includes(code)) return "cloud-sun";
+    if ([45, 48].includes(code)) return "cloud-fog";
+    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "cloud-rain";
+    if ([71, 73, 75, 77, 85, 86].includes(code)) return "snowflake";
+    if ([95, 96, 99].includes(code)) return "cloud-lightning";
+    return "cloud";
+  }
+  
+  const d = String(descOrCode).toLowerCase();
+  if (d.includes("clear") || d.includes("sol") || d.includes("despejado")) return "sun";
+  if (d.includes("storm") || d.includes("tormenta") || d.includes("rayos")) return "cloud-lightning";
+  if (d.includes("rain") || d.includes("lluvia") || d.includes("llovizna") || d.includes("drizzle")) return "cloud-rain";
+  if (d.includes("snow") || d.includes("nieve")) return "snowflake";
+  if (d.includes("fog") || d.includes("niebla")) return "cloud-fog";
+  if (d.includes("cloud") || d.includes("nube") || d.includes("nublado")) return "cloud";
+  return "cloud-sun";
+}
+
+/* AUTOCOMPLETE SUGGESTIONS */
 const cityInput = document.getElementById("city");
 const autocomplete = document.getElementById("autocomplete");
 
 cityInput.addEventListener("input", async (e) => {
-  // Al escribir de nuevo, limpiamos coordenadas antiguas para forzar búsqueda de texto nueva si no se elige sugerencia
   selectedLat = null;
   selectedLon = null;
   selectedLocationName = "";
@@ -493,9 +551,7 @@ document.addEventListener("click", (e) => {
   }
 });
 
-/* ====================================================== */
-/* SEARCH */
-/* ====================================================== */
+/* SEARCH CONTROL */
 function buscarManual() {
   if (selectedLat != null && selectedLon != null) {
     cargar(selectedLat, selectedLon);
@@ -505,7 +561,6 @@ function buscarManual() {
   const city = cityInput.value.trim();
   if (!city) return;
 
-  // Si busca por texto puro, dejamos que el backend resuelva el nombre correcto
   selectedLocationName = "";
 
   fetch(`/api/weather?city=${encodeURIComponent(city)}`)
@@ -525,42 +580,62 @@ function cargar(lat, lon) {
     });
 }
 
-/* ====================================================== */
-/* RENDER */
-/* ====================================================== */
+/* RENDER DINÁMICO */
 function render(data) {
+  const mainDesc = data.models.sources.openweather?.desc || "";
+  
+  // Agregar icono dinámico al consenso principal
   document.getElementById("temp").innerHTML =
-    data.consensus != null ? `${data.consensus} &deg;C` : "-- &deg;C";
+    data.consensus != null 
+      ? `<div style="display: flex; align-items: center; gap: 18px;"><i data-lucide="${getWeatherIcon(mainDesc)}" style="width: 50px; height: 50px; color: #fdba74;"></i> ${data.consensus} &deg;C</div>` 
+      : "-- &deg;C";
 
   document.getElementById("confidence").innerText = `Confianza: ${data.confidence}`;
+  document.getElementById("avg").innerHTML = `Temperatura promedio modelos: ${data.models.average ?? "-"} &deg;C`;
+  document.getElementById("sources").innerHTML = `Fuentes activas: ${Object.values(data.models.sources).filter(s => s.temp != null).length}`;
+  document.getElementById("locationName").innerText = selectedLocationName || data.location?.name || "Ubicación desconocida";
 
-  document.getElementById("avg").innerHTML =
-    `Temperatura promedio modelos: ${data.models.average ?? "-"} &deg;C`;
-
-  document.getElementById("sources").innerHTML =
-    `Fuentes activas: ${Object.values(data.models.sources).filter(s => s.temp != null).length}`;
-
-  document.getElementById("locationName").innerText =
-    selectedLocationName || data.location?.name || "Ubicación desconocida";
-
-  // Inyección de Tarjeta de Inteligencia Artificial + Google AdSense
+  // Tarjeta de IA
   const aiCardHTML = `
     <div style="background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 16px; padding: 20px; margin-top: 20px;">
-      <h3 style="margin: 0 0 10px 0; color: #60a5fa; font-size: 18px;">💡 Consejo del Día</h3>
+      <h3 style="margin: 0 0 10px 0; color: #60a5fa; font-size: 18px; display: flex; align-items: center; gap: 8px;"><i data-lucide="sparkles" style="width: 20px; height: 20px;"></i> Consejo del Día</h3>
       <p style="margin: 0; font-size: 16px; line-height: 1.5;">${data.ai_recommendation || "Cargando consejo..."}</p>
     </div>
-    
-    <!-- ESPACIO RESERVADO PARA GOOGLE ADSENSE -->
     <div style="width: 100%; height: 90px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; margin-top: 20px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4); font-size: 14px;">
       Espacio reservado para AdSense (728x90)
     </div>
   `;
   document.getElementById("ai-container").innerHTML = aiCardHTML;
 
+  // RENDER DEL PRONÓSTICO EXTENDIDO DIARIO
+  const forecastContainer = document.getElementById("forecast");
+  if (data.daily && data.daily.length) {
+    forecastContainer.innerHTML = "";
+    data.daily.forEach(day => {
+      const dateParts = day.date.split("-");
+      const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}` : day.date;
+      
+      forecastContainer.innerHTML += `
+        <div class="forecast-card">
+          <div class="forecast-date">${formattedDate}</div>
+          <div class="forecast-icon">
+            <i data-lucide="${getWeatherIcon(day.code)}" style="width: 38px; height: 38px;"></i>
+          </div>
+          <div class="forecast-temps">
+            <span style="color: #ef4444;">${day.max ?? "-"}°</span>
+            <span class="min">${day.min ?? "-"}°</span>
+          </div>
+        </div>
+      `;
+    });
+  } else {
+    forecastContainer.innerHTML = `<div style="color: rgba(255,255,255,0.4); padding: 10px;">Pronóstico diario extendido no disponible.</div>`;
+  }
+
+  // CONTAINER DE APIS COMPILADAS
   const container = document.getElementById("apis");
   container.innerHTML = "";
 
-  // MODELOS
   const names = {
     openweather: "OpenWeather",
     openmeteo: "Open-Meteo",
@@ -569,9 +644,13 @@ function render(data) {
 
   for (const key in data.models.sources) {
     const s = data.models.sources[key];
+    const itemIcon = getWeatherIcon(s.desc || key);
     container.innerHTML += `
       <div class="api-card">
-        <div class="api-title">${names[key]}</div>
+        <div class="api-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>${names[key]}</span>
+          <i data-lucide="${itemIcon}" style="width: 20px; height: 20px; color: #9cc6ff;"></i>
+        </div>
         <div class="api-temp">${s.temp ?? "-"} &deg;C</div>
         <div class="api-detail">Humedad: ${s.humidity ?? "-"}%</div>
         <div class="api-detail">Viento: ${s.wind ?? "-"} m/s</div>
@@ -599,6 +678,11 @@ function render(data) {
       <div class="api-detail">${data.extra.meteostat.desc}</div>
     </div>
   `;
+
+  // INSTANCIAR LOS ICONOS DE LUCIDE INTRODUCIDOS DINÁMICAMENTE
+  if (window.lucide) {
+    lucide.createIcons();
+  }
 }
 </script>
 
