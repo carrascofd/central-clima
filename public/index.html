@@ -10,376 +10,104 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-
 <script src="https://unpkg.com/lucide@latest"></script>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
   font-family: 'Inter', sans-serif;
-  background:
-    linear-gradient(
-      rgba(6, 11, 25, 0.92),
-      rgba(6, 11, 25, 0.96)
-    ),
-    url('https://images.unsplash.com/photo-1501630834273-4b5604d2ee31?q=80&w=1600&auto=format&fit=crop');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  color: white;
+  background: linear-gradient(rgba(6, 11, 25, 0.92), rgba(6, 11, 25, 0.96)), url('https://images.unsplash.com/photo-1501630834273-4b5604d2ee31?q=80&w=1600&auto=format&fit=crop');
+  background-size: cover; background-position: center; background-attachment: fixed; color: white;
 }
 
-/* ====================================================== */
-/* HEADER REESTRUCTURADO */
-/* ====================================================== */
+/* HEADER */
 .header {
-  position: sticky;
-  top: 0;
-  z-index: 999;
-  backdrop-filter: blur(18px);
-  background: rgba(8, 15, 30, 0.75);
-  border-bottom: 1px solid rgba(255, 255, 255, .06);
-  padding: 14px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  position: sticky; top: 0; z-index: 999; backdrop-filter: blur(18px); background: rgba(8, 15, 30, 0.75);
+  border-bottom: 1px solid rgba(255, 255, 255, .06); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px;
 }
+.logo-container { display: flex; align-items: center; min-width: 260px; }
+.logo-container img { height: 90px; width: auto; object-fit: contain; }
 
-.logo-container {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 260px;
-}
-
-.logo-container img {
-  height: 60px;
-  width: auto;
-  object-fit: contain;
-}
-
-.logo-title {
-  display: flex;
-  flex-direction: column;
-  line-height: 1;
-}
-
-.logo-title .top {
-  color: #78b8ff;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.logo-title .bottom {
-  color: #b8dc61;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-/* ====================================================== */
 /* SEARCH */
-/* ====================================================== */
-.search-wrapper {
-  width: 100%;
-  max-width: 450px;
-  position: relative;
-}
-
+.search-wrapper { width: 100%; max-width: 450px; position: relative; }
 .search-box {
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  overflow: hidden;
-  backdrop-filter: blur(12px);
-  transition: 0.2s;
+  display: flex; align-items: center; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px; overflow: hidden; backdrop-filter: blur(12px); transition: 0.2s;
 }
+.search-box:focus-within { border-color: #60a5fa; box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15); }
+.search-icon { padding-left: 18px; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
+.search-box input { width: 100%; background: transparent; border: none; outline: none; color: white; font-size: 16px; padding: 14px 14px; }
+.search-box input::placeholder { color: rgba(255, 255, 255, 0.55); }
+.search-btn { border: none; background: #3b82f6; color: white; padding: 14px 20px; cursor: pointer; font-size: 15px; font-weight: 600; transition: 0.2s; }
+.search-btn:hover { background: #2563eb; }
 
-.search-box:focus-within {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15);
-}
-
-.search-icon {
-  padding-left: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.7;
-}
-
-.search-box input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: white;
-  font-size: 16px;
-  padding: 14px 14px;
-}
-
-.search-box input::placeholder {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.search-btn {
-  border: none;
-  background: #3b82f6;
-  color: white;
-  padding: 14px 20px;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 600;
-  transition: 0.2s;
-}
-
-.search-btn:hover {
-  background: #2563eb;
-}
-
-/* ====================================================== */
 /* AUTOCOMPLETE */
-/* ====================================================== */
 .autocomplete {
-  position: absolute;
-  top: 60px;
-  left: 0;
-  right: 0;
-  background: rgba(18, 25, 42, 0.98);
-  border-radius: 18px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
-  display: none;
-  z-index: 1000;
+  position: absolute; top: 60px; left: 0; right: 0; background: rgba(18, 25, 42, 0.98); border-radius: 18px;
+  overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); backdrop-filter: blur(18px); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: none; z-index: 1000;
 }
+.autocomplete-item { padding: 16px 20px; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.05); transition: 0.15s; }
+.autocomplete-item:hover { background: rgba(255, 255, 255, 0.06); }
+.autocomplete-name { font-size: 16px; font-weight: 600; }
+.autocomplete-detail { margin-top: 4px; color: #9fb0c7; font-size: 13px; }
 
-.autocomplete-item {
-  padding: 16px 20px;
-  cursor: pointer;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: 0.15s;
-}
-
-.autocomplete-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.autocomplete-name {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.autocomplete-detail {
-  margin-top: 4px;
-  color: #9fb0c7;
-  font-size: 13px;
-}
-
-/* ====================================================== */
-/* CONTENT */
-/* ====================================================== */
-.container {
-  max-width: 1250px;
-  margin: auto;
-  padding: 24px;
-}
-
-/* ====================================================== */
-/* MAIN CARD */
-/* ====================================================== */
+/* CONTENT & CARDS */
+.container { max-width: 1250px; margin: auto; padding: 24px; }
 .main-card {
-  background: rgba(18, 25, 42, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 26px;
-  padding: 28px;
-  backdrop-filter: blur(14px);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-  margin-bottom: 24px;
+  background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 26px;
+  padding: 28px; backdrop-filter: blur(14px); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); margin-bottom: 24px;
 }
+.temp-main { font-size: 74px; font-weight: 700; margin: 0; }
+.confidence { margin-top: 8px; color: #9cc6ff; font-size: 18px; }
+.temp-row { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.location-main { font-size: 32px; font-weight: 600; color: #bcd3ee; }
 
-.temp-main {
-  font-size: 74px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.confidence {
-  margin-top: 8px;
-  color: #9cc6ff;
-  font-size: 18px;
-}
-
-.temp-row {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.location-main {
-  font-size: 32px;
-  font-weight: 600;
-  color: #bcd3ee;
-}
-
-/* ====================================================== */
-/* PRONOSTICO EXTENDIDO GRID */
-/* ====================================================== */
-.forecast-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 18px;
-  margin-bottom: 24px;
-}
-
+/* GRIDS */
+.forecast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 24px; }
 .forecast-card {
-  background: rgba(18, 25, 42, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 22px;
-  padding: 20px;
-  text-align: center;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 22px;
+  padding: 20px; text-align: center; backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
+.forecast-date { font-size: 16px; font-weight: 600; color: #9cc6ff; margin-bottom: 12px; }
+.forecast-icon { margin: 14px 0; color: #fdba74; display: flex; justify-content: center; }
+.forecast-temps { font-size: 20px; font-weight: 700; }
+.forecast-temps .min { color: #9fb0c7; font-weight: 400; font-size: 15px; margin-left: 8px; }
 
-.forecast-date {
-  font-size: 16px;
-  font-weight: 600;
-  color: #9cc6ff;
-  margin-bottom: 12px;
-}
+.grid { display: grid; grid-template-columns: 1.4fr 0.9fr; gap: 24px; margin-bottom: 24px; }
+.info-box { background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 24px; padding: 26px; min-height: 260px; }
+.info-line { font-size: 20px; margin-bottom: 14px; }
+#map { height: 260px; border-radius: 24px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); position: relative; }
 
-.forecast-icon {
-  margin: 14px 0;
-  color: #fdba74;
-  display: flex;
-  justify-content: center;
-}
-
-.forecast-temps {
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.forecast-temps .min {
-  color: #9fb0c7;
-  font-weight: 400;
-  font-size: 15px;
-  margin-left: 8px;
-}
-
-/* ====================================================== */
-/* GRID GENERAL */
-/* ====================================================== */
-.grid {
-  display: grid;
-  grid-template-columns: 1.4fr 0.9fr;
-  gap: 24px;
-  margin-bottom: 24px;
-}
-
-.info-box {
-  background: rgba(18, 25, 42, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 24px;
-  padding: 26px;
-  min-height: 260px;
-}
-
-.info-line {
-  font-size: 20px;
-  margin-bottom: 14px;
-}
-
-#map {
-  height: 260px;
-  border-radius: 24px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-/* ====================================================== */
-/* API CARDS */
-/* ====================================================== */
-.api-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 18px;
-}
+.section-title { font-size: 22px; margin: 36px 0 16px 0; color: #bcd3ee; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.api-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+.obs-grid { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+.premium-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 
 .api-card {
-  background: rgba(18, 25, 42, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 22px;
-  padding: 22px;
-  backdrop-filter: blur(12px);
-  transition: 0.2s;
+  background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 22px;
+  padding: 22px; backdrop-filter: blur(12px); transition: 0.2s;
 }
+.api-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); }
+.api-title { font-size: 18px; font-weight: 700; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; }
+.api-temp { font-size: 38px; font-weight: 700; margin-bottom: 12px; }
+.api-detail { color: #c0d4ea; margin-bottom: 8px; font-size: 14px; }
+.ok { color: #22c55e; }
 
-.api-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-}
+/* BADGES PARA PREMIUM */
+.badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.badge-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+.badge-yellow { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
+.badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+.badge-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
 
-.api-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 18px;
-}
-
-.api-temp {
-  font-size: 38px;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-
-.api-detail {
-  color: #c0d4ea;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.ok {
-  color: #22c55e;
-}
-
-.error {
-  color: #ef4444;
-}
-
-/* ====================================================== */
-/* RESPONSIVE MÓVIL */
-/* ====================================================== */
 @media(max-width:900px) {
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .search-wrapper {
-    max-width: 100%;
-  }
-
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
-  .temp-main {
-    font-size: 52px;
-  }
-
-  .logo-title .top,
-  .logo-title .bottom {
-    font-size: 24px;
-  }
+  .header { flex-direction: column; align-items: flex-start; }
+  .search-wrapper { max-width: 100%; }
+  .grid { grid-template-columns: 1fr; }
+  .temp-main { font-size: 52px; }
+  .obs-grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -388,11 +116,7 @@ body {
 
 <div class="header">
   <div class="logo-container">
-    <img class="logo" src="logo.png" alt="⛅">
-    <div class="logo-title">
-      <span class="top">Central</span>
-      <span class="bottom">de Clima</span>
-    </div>
+    <img class="logo" src="logo.png" alt="Central de Clima">
   </div>
 
   <div class="search-wrapper">
@@ -418,18 +142,38 @@ body {
     <div id="ai-container"></div>
   </div>
 
-  <h2 style="font-size: 22px; margin: 24px 0 14px 0; color: #bcd3ee; font-weight: 600;">📅 Pronóstico por Día</h2>
+  <h2 class="section-title">📅 Pronóstico por Día</h2>
   <div class="forecast-grid" id="forecast"></div>
 
-  <div class="grid">
+  <h2 class="section-title">
+    <i data-lucide="heart-pulse" style="width: 26px; height: 26px; color: #f43f5e;"></i> 
+    Salud, Agro y Calidad del Aire
+  </h2>
+  <div class="api-grid premium-grid" id="premium-grid"></div>
+
+  <div class="grid" style="margin-top: 24px;">
     <div class="info-box">
       <div id="avg" class="info-line"></div>
       <div id="sources" class="info-line"></div>
+      <div style="margin-top: 20px; font-size: 14px; color: #9fb0c7;">
+        <i data-lucide="info" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"></i>
+        El mapa interactivo incluye el <strong>Radar de Precipitaciones</strong>. Puedes alejarte para ver las zonas de lluvia cercanas.
+      </div>
     </div>
     <div id="map"></div>
   </div>
 
-  <div class="api-grid" id="apis"></div>
+  <h2 class="section-title">
+    <i data-lucide="cpu" style="width: 26px; height: 26px; color: #60a5fa;"></i> 
+    Modelos de Pronóstico
+  </h2>
+  <div class="api-grid" id="models-grid"></div>
+
+  <h2 class="section-title">
+    <i data-lucide="satellite" style="width: 26px; height: 26px; color: #b8dc61;"></i> 
+    Observaciones en Tiempo Real
+  </h2>
+  <div class="api-grid obs-grid" id="obs-grid"></div>
 
 </div>
 
@@ -438,22 +182,34 @@ body {
 <script>
 let map;
 let marker;
+let radarLayer;
 
 let selectedLat = null;
 let selectedLon = null;
 let selectedLocationName = "";
 
-/* MAP INIT */
-function initMap(lat, lon) {
+/* MAP INIT CON RADAR OWM */
+function initMap(lat, lon, owmKey) {
   if (!map) {
     map = L.map("map").setView([lat, lon], 10);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap"
     }).addTo(map);
-    marker = L.marker([lat, lon]).addTo(map);
   } else {
     map.setView([lat, lon], 10);
-    marker.setLatLng([lat, lon]);
+  }
+
+  // Actualizar Marcador
+  if(marker) map.removeLayer(marker);
+  marker = L.marker([lat, lon]).addTo(map);
+
+  // Cargar Capa de Radar de Precipitaciones de OpenWeatherMap
+  if (owmKey) {
+    if(radarLayer) map.removeLayer(radarLayer);
+    radarLayer = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmKey}`, {
+      opacity: 0.7,
+      attribution: 'Radar © OpenWeatherMap'
+    }).addTo(map);
   }
 }
 
@@ -466,10 +222,9 @@ window.onload = () => {
   }
 };
 
-/* FUNCIÓN AUXILIAR: ASIGNADOR DE ICONOS LUCIDE */
+/* UTILIDADES */
 function getWeatherIcon(descOrCode) {
   if (typeof descOrCode === 'number') {
-    // Códigos estándar WMO de Open-Meteo
     const code = descOrCode;
     if (code === 0) return "sun";
     if ([1, 2, 3].includes(code)) return "cloud-sun";
@@ -479,7 +234,6 @@ function getWeatherIcon(descOrCode) {
     if ([95, 96, 99].includes(code)) return "cloud-lightning";
     return "cloud";
   }
-  
   const d = String(descOrCode).toLowerCase();
   if (d.includes("clear") || d.includes("sol") || d.includes("despejado")) return "sun";
   if (d.includes("storm") || d.includes("tormenta") || d.includes("rayos")) return "cloud-lightning";
@@ -490,115 +244,86 @@ function getWeatherIcon(descOrCode) {
   return "cloud-sun";
 }
 
-/* AUTOCOMPLETE SUGGESTIONS */
+function getAQIBadge(aqi) {
+  if (!aqi) return `<span class="badge badge-green">N/A</span>`;
+  if (aqi <= 50) return `<span class="badge badge-green">Bueno</span>`;
+  if (aqi <= 100) return `<span class="badge badge-yellow">Moderado</span>`;
+  return `<span class="badge badge-red">Malo</span>`;
+}
+
+function getUVBadge(uv) {
+  if (uv == null) return `<span class="badge badge-green">N/A</span>`;
+  if (uv <= 2) return `<span class="badge badge-green">Bajo</span>`;
+  if (uv <= 5) return `<span class="badge badge-yellow">Medio</span>`;
+  if (uv <= 7) return `<span class="badge badge-red">Alto</span>`;
+  return `<span class="badge badge-purple">Extremo</span>`;
+}
+
+/* AUTOCOMPLETE */
 const cityInput = document.getElementById("city");
 const autocomplete = document.getElementById("autocomplete");
 
 cityInput.addEventListener("input", async (e) => {
-  selectedLat = null;
-  selectedLon = null;
-  selectedLocationName = "";
-
+  selectedLat = null; selectedLon = null; selectedLocationName = "";
   const q = e.target.value.trim();
-  if (q.length < 3) {
-    autocomplete.style.display = "none";
-    return;
-  }
-
+  if (q.length < 3) { autocomplete.style.display = "none"; return; }
   try {
     const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6`);
     const data = await res.json();
     autocomplete.innerHTML = "";
-
     data.features.forEach(item => {
-      const name = item.properties.name || "";
-      const city = item.properties.city || "";
-      const state = item.properties.state || "";
-      const country = item.properties.country || "";
-      const lon = item.geometry.coordinates[0];
-      const lat = item.geometry.coordinates[1];
-
+      const p = item.properties;
+      const name = p.name || "", city = p.city || "", state = p.state || "", country = p.country || "";
       const div = document.createElement("div");
       div.className = "autocomplete-item";
-      div.innerHTML = `
-        <div class="autocomplete-name">${name}</div>
-        <div class="autocomplete-detail">
-          ${city} ${state ? state + ", " : ""}${country}
-        </div>
-      `;
-
+      div.innerHTML = `<div class="autocomplete-name">${name}</div><div class="autocomplete-detail">${city} ${state ? state + ", " : ""}${country}</div>`;
       div.onclick = () => {
         cityInput.value = `${name}${city ? ", " + city : ""}, ${country}`;
-        selectedLat = lat;
-        selectedLon = lon;
+        selectedLat = item.geometry.coordinates[1]; selectedLon = item.geometry.coordinates[0];
         selectedLocationName = `${name}${state ? ", " + state : ""}${country ? ", " + country : ""}`;
         autocomplete.style.display = "none";
-        cargar(lat, lon);
+        cargar(selectedLat, selectedLon);
       };
-
       autocomplete.appendChild(div);
     });
-
     autocomplete.style.display = data.features.length ? "block" : "none";
-  } catch (e) {
-    console.error("Error en autocompletado:", e);
-  }
+  } catch (e) { console.error("Error en autocompletado:", e); }
 });
 
-document.addEventListener("click", (e) => {
-  if (!autocomplete.contains(e.target) && e.target !== cityInput) {
-    autocomplete.style.display = "none";
-  }
-});
+document.addEventListener("click", (e) => { if (!autocomplete.contains(e.target) && e.target !== cityInput) autocomplete.style.display = "none"; });
 
-/* SEARCH CONTROL */
 function buscarManual() {
-  if (selectedLat != null && selectedLon != null) {
-    cargar(selectedLat, selectedLon);
-    return;
-  }
-
+  if (selectedLat != null && selectedLon != null) { cargar(selectedLat, selectedLon); return; }
   const city = cityInput.value.trim();
   if (!city) return;
-
   selectedLocationName = "";
-
-  fetch(`/api/weather?city=${encodeURIComponent(city)}`)
-    .then(r => r.json())
-    .then(data => {
-      render(data);
-      initMap(data.location.lat, data.location.lon);
-    });
+  fetch(`/api/weather?city=${encodeURIComponent(city)}`).then(r => r.json()).then(data => { render(data); });
 }
 
 function cargar(lat, lon) {
-  fetch(`/api/weather?lat=${lat}&lon=${lon}`)
-    .then(r => r.json())
-    .then(data => {
-      render(data);
-      initMap(lat, lon);
-    });
+  fetch(`/api/weather?lat=${lat}&lon=${lon}`).then(r => r.json()).then(data => { render(data); });
 }
 
 /* RENDER DINÁMICO */
 function render(data) {
+  // 1. Inicializar Mapa con Radar
+  initMap(data.location.lat, data.location.lon, data.extra?.owmKey);
+
   const mainDesc = data.models.sources.openweather?.desc || "";
   
-  // Agregar icono dinámico al consenso principal
-  document.getElementById("temp").innerHTML =
-    data.consensus != null 
+  document.getElementById("temp").innerHTML = data.consensus != null 
       ? `<div style="display: flex; align-items: center; gap: 18px;"><i data-lucide="${getWeatherIcon(mainDesc)}" style="width: 50px; height: 50px; color: #fdba74;"></i> ${data.consensus} &deg;C</div>` 
       : "-- &deg;C";
 
   document.getElementById("confidence").innerText = `Confianza: ${data.confidence}`;
   document.getElementById("avg").innerHTML = `Temperatura promedio modelos: ${data.models.average ?? "-"} &deg;C`;
-  document.getElementById("sources").innerHTML = `Fuentes activas: ${Object.values(data.models.sources).filter(s => s.temp != null).length}`;
+  document.getElementById("sources").innerHTML = `Fuentes de modelos activas: ${Object.values(data.models.sources).filter(s => s.temp != null).length}`;
   document.getElementById("locationName").innerText = selectedLocationName || data.location?.name || "Ubicación desconocida";
 
   // Tarjeta de IA
   const aiCardHTML = `
     <div style="background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 16px; padding: 20px; margin-top: 20px;">
-      <h3 style="margin: 0 0 10px 0; color: #60a5fa; font-size: 18px; display: flex; align-items: center; gap: 8px;"><i data-lucide="sparkles" style="width: 20px; height: 20px;"></i> Consejo del Día</h3>
+      <h3 style="margin: 0 0 10px 0; color: #60a5fa; font-size: 18px; display: flex; align-items: center; gap: 8px;"><i data-lucide="sparkles" style="width: 20px; height: 20px;"></i> Informe Inteligente</h3>
       <p style="margin: 0; font-size: 16px; line-height: 1.5;">${data.ai_recommendation || "Cargando consejo..."}</p>
     </div>
     <div style="width: 100%; height: 90px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; margin-top: 20px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4); font-size: 14px;">
@@ -607,50 +332,54 @@ function render(data) {
   `;
   document.getElementById("ai-container").innerHTML = aiCardHTML;
 
-  // RENDER DEL PRONÓSTICO EXTENDIDO DIARIO
+  // PREMIUM DATA (AQI, UV, AGRO)
+  const pContainer = document.getElementById("premium-grid");
+  const p = data.premium;
+  pContainer.innerHTML = `
+    <div class="api-card">
+      <div class="api-title"><span>Calidad del Aire</span> ${getAQIBadge(p.aqi)}</div>
+      <div class="api-temp" style="font-size: 32px;">${p.aqi ?? "--"} <span style="font-size: 16px; color:#c0d4ea; font-weight: 500;">AQI</span></div>
+      <div class="api-detail"><i data-lucide="wind" style="width: 14px; height: 14px; vertical-align: middle;"></i> Micropartículas PM10: ${p.pm10 ?? "--"} µg/m³</div>
+    </div>
+    <div class="api-card">
+      <div class="api-title"><span>Índice UV Solar</span> ${getUVBadge(p.uv)}</div>
+      <div class="api-temp" style="font-size: 32px;">${p.uv ?? "--"} <span style="font-size: 16px; color:#c0d4ea; font-weight: 500;">Máx. Hoy</span></div>
+      <div class="api-detail"><i data-lucide="sun" style="width: 14px; height: 14px; vertical-align: middle;"></i> Evitar sol directo entre 10h y 16h</div>
+    </div>
+    <div class="api-card">
+      <div class="api-title"><span>Datos Agrometeorológicos</span> <i data-lucide="sprout" style="width: 20px; height: 20px; color: #4ade80;"></i></div>
+      <div class="api-detail" style="font-size: 16px; margin-bottom: 12px; color: white;">Prob. de Lluvia: <strong style="color: #60a5fa;">${p.rainProb ?? 0}%</strong></div>
+      <div class="api-detail" style="font-size: 16px; margin-bottom: 12px; color: white;">Humedad de Sup.: <strong>${p.agro.humidity ?? "--"}%</strong></div>
+      <div class="api-detail" style="font-size: 16px; color: white;">Riesgo Heladas: <strong style="color: ${p.agro.frost === 'Alta' ? '#f87171' : '#4ade80'};">${p.agro.frost}</strong></div>
+    </div>
+  `;
+
+  // PRONÓSTICO EXTENDIDO
   const forecastContainer = document.getElementById("forecast");
   if (data.daily && data.daily.length) {
     forecastContainer.innerHTML = "";
     data.daily.forEach(day => {
       const dateParts = day.date.split("-");
       const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}` : day.date;
-      
       forecastContainer.innerHTML += `
         <div class="forecast-card">
           <div class="forecast-date">${formattedDate}</div>
-          <div class="forecast-icon">
-            <i data-lucide="${getWeatherIcon(day.code)}" style="width: 38px; height: 38px;"></i>
-          </div>
-          <div class="forecast-temps">
-            <span style="color: #ef4444;">${day.max ?? "-"}°</span>
-            <span class="min">${day.min ?? "-"}°</span>
-          </div>
+          <div class="forecast-icon"><i data-lucide="${getWeatherIcon(day.code)}" style="width: 38px; height: 38px;"></i></div>
+          <div class="forecast-temps"><span style="color: #ef4444;">${day.max ?? "-"}°</span><span class="min">${day.min ?? "-"}°</span></div>
         </div>
       `;
     });
-  } else {
-    forecastContainer.innerHTML = `<div style="color: rgba(255,255,255,0.4); padding: 10px;">Pronóstico diario extendido no disponible.</div>`;
   }
 
-  // CONTAINER DE APIS COMPILADAS
-  const container = document.getElementById("apis");
-  container.innerHTML = "";
-
-  const names = {
-    openweather: "OpenWeather",
-    openmeteo: "Open-Meteo",
-    metno: "MET Norway"
-  };
-
+  // MODELOS
+  const modelsContainer = document.getElementById("models-grid");
+  modelsContainer.innerHTML = "";
+  const names = { openweather: "OpenWeather", openmeteo: "Open-Meteo", metno: "MET Norway" };
   for (const key in data.models.sources) {
     const s = data.models.sources[key];
-    const itemIcon = getWeatherIcon(s.desc || key);
-    container.innerHTML += `
+    modelsContainer.innerHTML += `
       <div class="api-card">
-        <div class="api-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>${names[key]}</span>
-          <i data-lucide="${itemIcon}" style="width: 20px; height: 20px; color: #9cc6ff;"></i>
-        </div>
+        <div class="api-title"><span>${names[key]}</span><i data-lucide="${getWeatherIcon(s.desc || key)}" style="width: 20px; height: 20px; color: #9cc6ff;"></i></div>
         <div class="api-temp">${s.temp ?? "-"} &deg;C</div>
         <div class="api-detail">Humedad: ${s.humidity ?? "-"}%</div>
         <div class="api-detail">Viento: ${s.wind ?? "-"} m/s</div>
@@ -659,30 +388,24 @@ function render(data) {
     `;
   }
 
-  // METAR
-  container.innerHTML += `
+  // OBSERVACIONES REALES
+  const obsContainer = document.getElementById("obs-grid");
+  obsContainer.innerHTML = `
     <div class="api-card">
-      <div class="api-title">METAR</div>
+      <div class="api-title"><span>Estación METAR</span><i data-lucide="plane" style="width: 20px; height: 20px; color: #b8dc61;"></i></div>
       <div class="api-temp">${data.observation.metar.temp ?? "-"} &deg;C</div>
       <div class="api-detail">${data.observation.metar.station}</div>
-      <div class="api-detail">${data.observation.metar.note ?? "Estación en rango"}</div>
+      <div class="api-detail">${data.observation.metar.note ?? "Estación en rango (Aeronáutica)"}</div>
     </div>
-  `;
-
-  // METEOSTAT
-  container.innerHTML += `
     <div class="api-card">
-      <div class="api-title">Meteostat</div>
+      <div class="api-title"><span>Meteostat</span><i data-lucide="thermometer" style="width: 20px; height: 20px; color: #b8dc61;"></i></div>
       <div class="api-temp">${data.extra.meteostat.temp ?? "-"} &deg;C</div>
       <div class="api-detail">${data.extra.meteostat.station || "Sin estación"}</div>
       <div class="api-detail">${data.extra.meteostat.desc}</div>
     </div>
   `;
 
-  // INSTANCIAR LOS ICONOS DE LUCIDE INTRODUCIDOS DINÁMICAMENTE
-  if (window.lucide) {
-    lucide.createIcons();
-  }
+  if (window.lucide) lucide.createIcons();
 }
 </script>
 
