@@ -194,9 +194,14 @@ export default async function handler(req, res) {
         const forecastSummary = dailyForecast.map(d => `${d.date}: Mín ${d.min}°C, Máx ${d.max}°C`).join("; ");
         const promptText = `El clima actual en ${resolvedCityName} es de ${consensus}°C. Calidad del aire (AQI): ${premium.aqi || 'Desconocida'}. Índice UV Máx: ${premium.uv || 'Desconocido'}. Pronóstico: ${forecastSummary}. Redacta un informe muy breve y amigable (máximo 2 oraciones) sugiriendo qué ropa vestir hoy y entregando una recomendación clave de salud o actividad basada en la contaminación o el sol.`;
         
+        // Añade esto ANTES del fetch
+        console.log("🔍 Verificando API Key en Vercel:");
+        console.log("¿Existe la clave?:", !!process.env.GEMINI_API_KEY);
+        console.log("Primeros 5 caracteres:", process.env.GEMINI_API_KEY?.substring(0, 5));
+
         // CORRECCIÓN AQUÍ: Usamos gemini-1.5-flash-latest
         // USA ESTA URL EXACTA
-        const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+        const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
