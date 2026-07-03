@@ -126,9 +126,6 @@ export default async function handler(req, res) {
       return res.status(200).json(cached);
     }
 
-    // =====================================================
-    // LLAMADAS MULTIMODELO PARALELAS Y DATOS PREMIUM
-    // =====================================================
     const [owRes, omRes, metRes, aqiRes, metar, meteostat] = await Promise.all([
       fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&appid=${OPENWEATHER_KEY}`),
       fetch(`https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current=temperature_2m,wind_speed_10m,weather_code,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max,precipitation_probability_max&forecast_days=3&timezone=auto`),
@@ -145,7 +142,6 @@ export default async function handler(req, res) {
 
     const resolvedCityName = city || owData?.name || "Ubicación actual";
 
-    // 📦 PROCESAR PRONÓSTICO EXTENDIDO
     const dailyForecast = [];
     if (omData?.daily) {
       for (let i = 0; i < omData.daily.time.length; i++) {
@@ -158,7 +154,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 💎 DATOS PREMIUM (SALUD Y AGRO)
     const premium = {
        aqi: aqiData?.current?.european_aqi ?? null,
        pm10: aqiData?.current?.pm10 ?? null,
@@ -170,33 +165,17 @@ export default async function handler(req, res) {
        }
     };
 
-    // 🧠 MODELOS DATA MAPPING
     const models = {
       sources: {
-        openweather: {
-          temp: owData?.main?.temp ?? null,
-          humidity: owData?.main?.humidity ?? null,
-          wind: owData?.wind?.speed ?? null,
-          desc: owData?.weather?.[0]?.description ?? ""
-        },
-        openmeteo: {
-          temp: omData?.current?.temperature_2m ?? null,
-          wind: omData?.current?.wind_speed_10m ?? null,
-          desc: "Open-Meteo"
-        },
-        metno: {
-          temp: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature ?? null,
-          humidity: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.relative_humidity ?? null,
-          wind: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.wind_speed ?? null,
-          desc: "MET Norway"
-        }
+        openweather: { temp: owData?.main?.temp ?? null, humidity: owData?.main?.humidity ?? null, wind: owData?.wind?.speed ?? null, desc: owData?.weather?.[0]?.description ?? "" },
+        openmeteo: { temp: omData?.current?.temperature_2m ?? null, wind: omData?.current?.wind_speed_10m ?? null, desc: "Open-Meteo" },
+        metno: { temp: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature ?? null, humidity: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.relative_humidity ?? null, wind: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.wind_speed ?? null, desc: "MET Norway" }
       }
     };
 
     const modelTemps = Object.values(models.sources).map(s => s.temp).filter(t => t != null);
     models.average = modelTemps.length ? (modelTemps.reduce((a, b) => a + b, 0) / modelTemps.length).toFixed(1) : null;
 
-    // 🤝 CONSENSO
     const observationTemps = [];
     if (metar.usedInConsensus && metar.temp != null) observationTemps.push(metar.temp);
     if (meteostat.usedInConsensus && meteostat.temp != null) observationTemps.push(meteostat.temp);
@@ -204,13 +183,15 @@ export default async function handler(req, res) {
     const allTemps = [...modelTemps, ...observationTemps];
     const consensus = allTemps.length ? (allTemps.reduce((a, b) => a + b, 0) / allTemps.length).toFixed(1) : null;
 
-    // 🤖 GEMINI IA - ENRIQUECIDO CON DATOS DE SALUD
-    let ai_recommendation = "Informe inteligente no disponible en este momento.";
+    // AJUSTE 3: LOGICA ROBUSTA PARA IA CON DEPURACIÓN VISUAL
+    let ai_recommendation = "Cargando informe inteligente...";
     
-    if (GEMINI_API_KEY) {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === "undefined") {
+      ai_recommendation = "⚠️ El informe no está disponible porque falta configurar tu variable de entorno GEMINI_API_KEY en el backend.";
+    } else {
       try {
         const forecastSummary = dailyForecast.map(d => `${d.date}: Mín ${d.min}°C, Máx ${d.max}°C`).join("; ");
-        const promptText = `Eres un asistente meteorológico local experto. El clima actual en ${resolvedCityName} es de ${consensus}°C de consenso. Calidad del aire (AQI): ${premium.aqi || 'Desconocida'}. Índice UV Máx: ${premium.uv || 'Desconocido'}. Pronóstico próximo: ${forecastSummary}. Redacta un informe ejecutivo muy breve, amigable y atrapante (máximo 2 oraciones) sugiriendo qué ropa vestir hoy y entregando una recomendación clave de salud o actividad para el usuario, basándote estrictamente en los niveles de contaminación o rayos UV provistos.`;
+        const promptText = `Eres un asistente meteorológico local experto. El clima actual en ${resolvedCityName} es de ${consensus}°C. Calidad del aire (AQI): ${premium.aqi || 'Desconocida'}. Índice UV Máx: ${premium.uv || 'Desconocido'}. Pronóstico: ${forecastSummary}. Redacta un informe muy breve y amigable (máximo 2 oraciones) sugiriendo qué ropa vestir hoy y entregando una recomendación clave de salud o actividad basada en la contaminación o el sol.`;
         
         const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
           method: 'POST',
@@ -218,14 +199,22 @@ export default async function handler(req, res) {
           body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
         });
         
-        const aiData = await aiRes.json();
-        if (aiData.candidates && aiData.candidates.length > 0) {
-          ai_recommendation = aiData.candidates[0].content.parts[0].text;
+        if (!aiRes.ok) {
+          ai_recommendation = `⚠️ Error al conectar con Gemini IA (Código: ${aiRes.status}). Revisa que tu API Key sea válida.`;
+        } else {
+          const aiData = await aiRes.json();
+          if (aiData.candidates && aiData.candidates.length > 0) {
+            ai_recommendation = aiData.candidates[0].content.parts[0].text;
+          } else {
+            ai_recommendation = "⚠️ La IA no devolvió un mensaje válido.";
+          }
         }
-      } catch (error) { console.error("Error consultando IA:", error); }
+      } catch (error) { 
+        console.error("Error consultando IA:", error); 
+        ai_recommendation = "⚠️ Hubo un fallo interno en el servidor al intentar conectar con la inteligencia artificial.";
+      }
     }
 
-    // 🚀 RESPONSE
     const result = {
       consensus,
       confidence: allTemps.length >= 4 ? "alta" : "media",

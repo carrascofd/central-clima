@@ -25,10 +25,11 @@ body {
 /* HEADER */
 .header {
   position: sticky; top: 0; z-index: 999; backdrop-filter: blur(18px); background: rgba(8, 15, 30, 0.75);
-  border-bottom: 1px solid rgba(255, 255, 255, .06); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, .06); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
 }
-.logo-container { display: flex; align-items: center; min-width: 260px; }
-.logo-container img { height: 90px; width: auto; object-fit: contain; }
+.logo-container { display: flex; align-items: center; }
+/* AJUSTE 1: Logo duplicado en tamaño */
+.logo-container img { height: 140px; width: auto; object-fit: contain; max-width: 100%; }
 
 /* SEARCH */
 .search-wrapper { width: 100%; max-width: 450px; position: relative; }
@@ -104,6 +105,7 @@ body {
 
 @media(max-width:900px) {
   .header { flex-direction: column; align-items: flex-start; }
+  .logo-container img { height: 100px; } /* Ajuste responsivo para móvil */
   .search-wrapper { max-width: 100%; }
   .grid { grid-template-columns: 1fr; }
   .temp-main { font-size: 52px; }
@@ -155,9 +157,10 @@ body {
     <div class="info-box">
       <div id="avg" class="info-line"></div>
       <div id="sources" class="info-line"></div>
-      <div style="margin-top: 20px; font-size: 14px; color: #9fb0c7;">
-        <i data-lucide="info" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"></i>
-        El mapa interactivo incluye el <strong>Radar de Precipitaciones</strong>. Puedes alejarte para ver las zonas de lluvia cercanas.
+      <div style="margin-top: 20px; font-size: 14px; color: #9fb0c7; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+        <i data-lucide="info" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px; color: #60a5fa;"></i>
+        <strong>Sobre el Radar de Precipitaciones:</strong> Está superpuesto en el mapa de la derecha. 
+        Si lo ves completamente transparente, significa que <strong>no hay lluvias</strong> detectadas en este momento en tu zona. Aleja el mapa para buscar tormentas globales.
       </div>
     </div>
     <div id="map"></div>
@@ -188,7 +191,7 @@ let selectedLat = null;
 let selectedLon = null;
 let selectedLocationName = "";
 
-/* MAP INIT CON RADAR OWM */
+/* MAP INIT CON RADAR OWM (AJUSTE 2: Opacidad subida) */
 function initMap(lat, lon, owmKey) {
   if (!map) {
     map = L.map("map").setView([lat, lon], 10);
@@ -199,15 +202,14 @@ function initMap(lat, lon, owmKey) {
     map.setView([lat, lon], 10);
   }
 
-  // Actualizar Marcador
   if(marker) map.removeLayer(marker);
   marker = L.marker([lat, lon]).addTo(map);
 
-  // Cargar Capa de Radar de Precipitaciones de OpenWeatherMap
-  if (owmKey) {
+  // Forzamos la capa de radar si existe la key de OWM
+  if (owmKey && owmKey !== "undefined") {
     if(radarLayer) map.removeLayer(radarLayer);
     radarLayer = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmKey}`, {
-      opacity: 0.7,
+      opacity: 1.0, // Ahora el color de lluvia será super intenso (si llueve)
       attribution: 'Radar © OpenWeatherMap'
     }).addTo(map);
   }
@@ -306,7 +308,6 @@ function cargar(lat, lon) {
 
 /* RENDER DINÁMICO */
 function render(data) {
-  // 1. Inicializar Mapa con Radar
   initMap(data.location.lat, data.location.lon, data.extra?.owmKey);
 
   const mainDesc = data.models.sources.openweather?.desc || "";
@@ -320,11 +321,11 @@ function render(data) {
   document.getElementById("sources").innerHTML = `Fuentes de modelos activas: ${Object.values(data.models.sources).filter(s => s.temp != null).length}`;
   document.getElementById("locationName").innerText = selectedLocationName || data.location?.name || "Ubicación desconocida";
 
-  // Tarjeta de IA
+  // Tarjeta de IA (AJUSTE 3: Mostrará un mensaje de advertencia si la Key falla)
   const aiCardHTML = `
     <div style="background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 16px; padding: 20px; margin-top: 20px;">
       <h3 style="margin: 0 0 10px 0; color: #60a5fa; font-size: 18px; display: flex; align-items: center; gap: 8px;"><i data-lucide="sparkles" style="width: 20px; height: 20px;"></i> Informe Inteligente</h3>
-      <p style="margin: 0; font-size: 16px; line-height: 1.5;">${data.ai_recommendation || "Cargando consejo..."}</p>
+      <p style="margin: 0; font-size: 16px; line-height: 1.5; color: ${data.ai_recommendation.includes('⚠️') ? '#facc15' : 'white'};">${data.ai_recommendation}</p>
     </div>
     <div style="width: 100%; height: 90px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; margin-top: 20px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4); font-size: 14px;">
       Espacio reservado para AdSense (728x90)
@@ -332,7 +333,7 @@ function render(data) {
   `;
   document.getElementById("ai-container").innerHTML = aiCardHTML;
 
-  // PREMIUM DATA (AQI, UV, AGRO)
+  // PREMIUM DATA
   const pContainer = document.getElementById("premium-grid");
   const p = data.premium;
   pContainer.innerHTML = `
