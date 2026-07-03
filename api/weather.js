@@ -184,6 +184,7 @@ export default async function handler(req, res) {
     const consensus = allTemps.length ? (allTemps.reduce((a, b) => a + b, 0) / allTemps.length).toFixed(1) : null;
 
     // AJUSTE 3: LOGICA ROBUSTA PARA IA CON DEPURACIÓN VISUAL
+    // AJUSTE 3: LOGICA ROBUSTA PARA IA CON DEPURACIÓN VISUAL Y NUEVO MODELO
     let ai_recommendation = "Cargando informe inteligente...";
     
     if (!GEMINI_API_KEY || GEMINI_API_KEY === "undefined") {
@@ -193,18 +194,17 @@ export default async function handler(req, res) {
         const forecastSummary = dailyForecast.map(d => `${d.date}: Mín ${d.min}°C, Máx ${d.max}°C`).join("; ");
         const promptText = `Eres un asistente meteorológico local experto. El clima actual en ${resolvedCityName} es de ${consensus}°C. Calidad del aire (AQI): ${premium.aqi || 'Desconocida'}. Índice UV Máx: ${premium.uv || 'Desconocido'}. Pronóstico: ${forecastSummary}. Redacta un informe muy breve y amigable (máximo 2 oraciones) sugiriendo qué ropa vestir hoy y entregando una recomendación clave de salud o actividad basada en la contaminación o el sol.`;
         
-        const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        // CORRECCIÓN AQUÍ: Usamos gemini-1.5-flash-latest
+        const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
         });
         
         if (!aiRes.ok) {
-          // AQUÍ ESTÁ LA MAGIA: Capturamos el texto exacto del error de Google
           const errorDetails = await aiRes.text(); 
           console.error("🔍 DETALLE DEL ERROR DE GOOGLE:", errorDetails);
-          console.error("Largo de la API Key usada:", GEMINI_API_KEY.length, "caracteres.");
-          ai_recommendation = `⚠️ Google rechazó la petición (Código ${aiRes.status}). Revisa los "Logs" de Vercel para ver el motivo exacto.`;
+          ai_recommendation = `⚠️ Google rechazó la petición (Código ${aiRes.status}). Revisa los "Logs" de Vercel.`;
         } else {
           const aiData = await aiRes.json();
           if (aiData.candidates && aiData.candidates.length > 0) {
