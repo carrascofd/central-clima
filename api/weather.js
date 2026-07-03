@@ -200,7 +200,11 @@ export default async function handler(req, res) {
         });
         
         if (!aiRes.ok) {
-          ai_recommendation = `⚠️ Error al conectar con Gemini IA (Código: ${aiRes.status}). Revisa que tu API Key sea válida.`;
+          // AQUÍ ESTÁ LA MAGIA: Capturamos el texto exacto del error de Google
+          const errorDetails = await aiRes.text(); 
+          console.error("🔍 DETALLE DEL ERROR DE GOOGLE:", errorDetails);
+          console.error("Largo de la API Key usada:", GEMINI_API_KEY.length, "caracteres.");
+          ai_recommendation = `⚠️ Google rechazó la petición (Código ${aiRes.status}). Revisa los "Logs" de Vercel para ver el motivo exacto.`;
         } else {
           const aiData = await aiRes.json();
           if (aiData.candidates && aiData.candidates.length > 0) {
