@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Central de Clima</title>
+<title>Central de Clima Pro</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -14,401 +13,279 @@
 
 <style>
 * { box-sizing: border-box; }
-
 body {
   margin: 0;
   font-family: 'Inter', sans-serif;
   background: linear-gradient(rgba(6, 11, 25, 0.92), rgba(6, 11, 25, 0.96)), url('https://images.unsplash.com/photo-1501630834273-4b5604d2ee31?q=80&w=1600&auto=format&fit=crop');
-  background-size: cover; background-position: center; background-attachment: fixed; color: white;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: #fff;
+  min-height: 100vh;
 }
-
-/* HEADER */
 .header {
-  position: sticky; top: 0; z-index: 999; backdrop-filter: blur(18px); background: rgba(8, 15, 30, 0.75);
-  border-bottom: 1px solid rgba(255, 255, 255, .06); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  text-align: center;
+  padding: 2rem 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
-.logo-container { display: flex; align-items: center; }
-/* AJUSTE 1: Logo duplicado en tamaño */
-.logo-container img { height: 140px; width: auto; object-fit: contain; max-width: 100%; }
-
-/* SEARCH */
-.search-wrapper { width: 100%; max-width: 450px; position: relative; }
-.search-box {
-  display: flex; align-items: center; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px; overflow: hidden; backdrop-filter: blur(12px); transition: 0.2s;
+.header h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
-.search-box:focus-within { border-color: #60a5fa; box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15); }
-.search-icon { padding-left: 18px; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
-.search-box input { width: 100%; background: transparent; border: none; outline: none; color: white; font-size: 16px; padding: 14px 14px; }
-.search-box input::placeholder { color: rgba(255, 255, 255, 0.55); }
-.search-btn { border: none; background: #3b82f6; color: white; padding: 14px 20px; cursor: pointer; font-size: 15px; font-weight: 600; transition: 0.2s; }
+.search-container {
+  display: flex;
+  gap: 10px;
+  max-width: 500px;
+  margin: 1.5rem auto 0;
+}
+.search-input {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  font-size: 1rem;
+}
+.search-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
 .search-btn:hover { background: #2563eb; }
-
-/* AUTOCOMPLETE */
-.autocomplete {
-  position: absolute; top: 60px; left: 0; right: 0; background: rgba(18, 25, 42, 0.98); border-radius: 18px;
-  overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); backdrop-filter: blur(18px); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: none; z-index: 1000;
+.main-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
 }
-.autocomplete-item { padding: 16px 20px; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.05); transition: 0.15s; }
-.autocomplete-item:hover { background: rgba(255, 255, 255, 0.06); }
-.autocomplete-name { font-size: 16px; font-weight: 600; }
-.autocomplete-detail { margin-top: 4px; color: #9fb0c7; font-size: 13px; }
-
-/* CONTENT & CARDS */
-.container { max-width: 1250px; margin: auto; padding: 24px; }
-.main-card {
-  background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 26px;
-  padding: 28px; backdrop-filter: blur(14px); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); margin-bottom: 24px;
+@media(min-width: 900px) {
+  .main-container { grid-template-columns: 350px 1fr; }
 }
-.temp-main { font-size: 74px; font-weight: 700; margin: 0; }
-.confidence { margin-top: 8px; color: #9cc6ff; font-size: 18px; }
-.temp-row { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
-.location-main { font-size: 32px; font-weight: 600; color: #bcd3ee; }
-
-/* GRIDS */
-.forecast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 24px; }
-.forecast-card {
-  background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 22px;
-  padding: 20px; text-align: center; backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+.panel {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
 }
-.forecast-date { font-size: 16px; font-weight: 600; color: #9cc6ff; margin-bottom: 12px; }
-.forecast-icon { margin: 14px 0; color: #fdba74; display: flex; justify-content: center; }
-.forecast-temps { font-size: 20px; font-weight: 700; }
-.forecast-temps .min { color: #9fb0c7; font-weight: 400; font-size: 15px; margin-left: 8px; }
-
-.grid { display: grid; grid-template-columns: 1.4fr 0.9fr; gap: 24px; margin-bottom: 24px; }
-.info-box { background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 24px; padding: 26px; min-height: 260px; }
-.info-line { font-size: 20px; margin-bottom: 14px; }
-#map { height: 260px; border-radius: 24px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); position: relative; }
-
-.section-title { font-size: 22px; margin: 36px 0 16px 0; color: #bcd3ee; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-.api-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
-.obs-grid { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
-.premium-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-
+.consensus-box {
+  text-align: center;
+  padding: 2rem 0;
+}
+.consensus-title {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+}
+.consensus-temp {
+  font-size: 5rem;
+  font-weight: 700;
+  line-height: 1;
+  background: linear-gradient(to right, #60a5fa, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1rem;
+}
+.location-name { font-size: 1.2rem; font-weight: 500; }
+#map {
+  width: 100%;
+  height: 250px;
+  border-radius: 12px;
+  margin-top: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.apis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
 .api-card {
-  background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 22px;
-  padding: 22px; backdrop-filter: blur(12px); transition: 0.2s;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.2rem;
 }
-.api-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); }
-.api-title { font-size: 18px; font-weight: 700; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; }
-.api-temp { font-size: 38px; font-weight: 700; margin-bottom: 12px; }
-.api-detail { color: #c0d4ea; margin-bottom: 8px; font-size: 14px; }
-.ok { color: #22c55e; }
-
-/* BADGES PARA PREMIUM */
-.badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
-.badge-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
-.badge-yellow { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
-.badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-.badge-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
-
-@media(max-width:900px) {
-  .header { flex-direction: column; align-items: flex-start; }
-  .logo-container img { height: 100px; } /* Ajuste responsivo para móvil */
-  .search-wrapper { max-width: 100%; }
-  .grid { grid-template-columns: 1fr; }
-  .temp-main { font-size: 52px; }
-  .obs-grid { grid-template-columns: 1fr; }
+.api-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.api-temp {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.api-detail {
+  font-size: 0.9rem;
+  color: #cbd5e1;
+  margin-bottom: 4px;
+}
+.loading {
+  text-align: center;
+  padding: 4rem;
+  font-size: 1.2rem;
+  color: #94a3b8;
+}
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  margin-top: 10px;
 }
 </style>
 </head>
-
 <body>
 
 <div class="header">
-  <div class="logo-container">
-    <img class="logo" src="logo.png" alt="Central de Clima">
-  </div>
-
-  <div class="search-wrapper">
-    <div class="search-box">
-      <div class="search-icon">
-        <i data-lucide="search" style="width: 18px; height: 18px;"></i>
-      </div>
-      <input id="city" placeholder="Buscar ciudad o ubicación..." autocomplete="off" />
-      <button class="search-btn" onclick="buscarManual()">Consultar</button>
-    </div>
-    <div id="autocomplete" class="autocomplete"></div>
+  <h1>Central de Clima Pro</h1>
+  <p style="color:#94a3b8; margin:0;">Análisis y consolidación matemática de fuentes</p>
+  <div class="search-container">
+    <input type="text" id="cityInput" class="search-input" placeholder="Ej: San Luis, Argentina" onkeypress="if(event.key === 'Enter') searchCity()" />
+    <button class="search-btn" onclick="searchCity()">Buscar</button>
   </div>
 </div>
 
-<div class="container">
-
-  <div class="main-card">
-    <div class="temp-row">
-      <h1 id="temp" class="temp-main">-- &deg;C</h1>
-      <div id="locationName" class="location-main">Cargando ubicación...</div>
-    </div>
-    <div id="confidence" class="confidence"></div>
-    <div id="ai-container"></div>
-  </div>
-
-  <h2 class="section-title">📅 Pronóstico por Día</h2>
-  <div class="forecast-grid" id="forecast"></div>
-
-  <h2 class="section-title">
-    <i data-lucide="heart-pulse" style="width: 26px; height: 26px; color: #f43f5e;"></i> 
-    Salud, Agro y Calidad del Aire
-  </h2>
-  <div class="api-grid premium-grid" id="premium-grid"></div>
-
-  <div class="grid" style="margin-top: 24px;">
-    <div class="info-box">
-      <div id="avg" class="info-line"></div>
-      <div id="sources" class="info-line"></div>
-      <div style="margin-top: 20px; font-size: 14px; color: #9fb0c7; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-        <i data-lucide="info" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px; color: #60a5fa;"></i>
-        <strong>Sobre el Radar de Precipitaciones:</strong> Está superpuesto en el mapa de la derecha. 
-        Si lo ves completamente transparente, significa que <strong>no hay lluvias</strong> detectadas en este momento en tu zona. Aleja el mapa para buscar tormentas globales.
-      </div>
-    </div>
-    <div id="map"></div>
-  </div>
-
-  <h2 class="section-title">
-    <i data-lucide="cpu" style="width: 26px; height: 26px; color: #60a5fa;"></i> 
-    Modelos de Pronóstico
-  </h2>
-  <div class="api-grid" id="models-grid"></div>
-
-  <h2 class="section-title">
-    <i data-lucide="satellite" style="width: 26px; height: 26px; color: #b8dc61;"></i> 
-    Observaciones en Tiempo Real
-  </h2>
-  <div class="api-grid obs-grid" id="obs-grid"></div>
-
+<div class="main-container" id="content">
+  <div class="loading">Ingresa una ciudad para analizar el clima...</div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
 <script>
-let map;
-let marker;
-let radarLayer;
+  lucide.createIcons();
+  let mapInstance = null;
 
-let selectedLat = null;
-let selectedLon = null;
-let selectedLocationName = "";
-
-/* MAP INIT CON RADAR OWM (AJUSTE 2: Opacidad subida) */
-function initMap(lat, lon, owmKey) {
-  if (!map) {
-    map = L.map("map").setView([lat, lon], 10);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap"
-    }).addTo(map);
-  } else {
-    map.setView([lat, lon], 10);
+  async function searchCity() {
+    const city = document.getElementById("cityInput").value;
+    if (!city) return;
+    
+    document.getElementById("content").innerHTML = '<div class="loading">Consultando satélites y modelos...</div>';
+    
+    try {
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
+      const geoData = await geoRes.json();
+      
+      if (!geoData || geoData.length === 0) {
+        document.getElementById("content").innerHTML = '<div class="loading">No se encontró la ciudad.</div>';
+        return;
+      }
+      
+      const lat = geoData[0].lat;
+      const lon = geoData[0].lon;
+      const displayName = geoData[0].display_name.split(',')[0];
+      
+      fetchWeather(lat, lon, displayName);
+    } catch (e) {
+      document.getElementById("content").innerHTML = '<div class="loading">Error en la búsqueda geográfica.</div>';
+    }
   }
 
-  if(marker) map.removeLayer(marker);
-  marker = L.marker([lat, lon]).addTo(map);
-
-  // Forzamos la capa de radar si existe la key de OWM
-  if (owmKey && owmKey !== "undefined") {
-    if(radarLayer) map.removeLayer(radarLayer);
-    radarLayer = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmKey}`, {
-      opacity: 1.0, // Ahora el color de lluvia será super intenso (si llueve)
-      attribution: 'Radar © OpenWeatherMap'
-    }).addTo(map);
+  async function fetchWeather(lat, lon, cityName) {
+    try {
+      const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}&city=${encodeURIComponent(cityName)}`);
+      const data = await res.json();
+      
+      renderUI(data);
+    } catch (e) {
+      document.getElementById("content").innerHTML = '<div class="loading">Error al contactar el servidor.</div>';
+    }
   }
-}
 
-/* GEOLOCATION */
-window.onload = () => {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(pos => {
-      cargar(pos.coords.latitude, pos.coords.longitude);
-    });
-  }
-};
-
-/* UTILIDADES */
-function getWeatherIcon(descOrCode) {
-  if (typeof descOrCode === 'number') {
-    const code = descOrCode;
-    if (code === 0) return "sun";
-    if ([1, 2, 3].includes(code)) return "cloud-sun";
-    if ([45, 48].includes(code)) return "cloud-fog";
-    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "cloud-rain";
-    if ([71, 73, 75, 77, 85, 86].includes(code)) return "snowflake";
-    if ([95, 96, 99].includes(code)) return "cloud-lightning";
-    return "cloud";
-  }
-  const d = String(descOrCode).toLowerCase();
-  if (d.includes("clear") || d.includes("sol") || d.includes("despejado")) return "sun";
-  if (d.includes("storm") || d.includes("tormenta") || d.includes("rayos")) return "cloud-lightning";
-  if (d.includes("rain") || d.includes("lluvia") || d.includes("llovizna") || d.includes("drizzle")) return "cloud-rain";
-  if (d.includes("snow") || d.includes("nieve")) return "snowflake";
-  if (d.includes("fog") || d.includes("niebla")) return "cloud-fog";
-  if (d.includes("cloud") || d.includes("nube") || d.includes("nublado")) return "cloud";
-  return "cloud-sun";
-}
-
-function getAQIBadge(aqi) {
-  if (!aqi) return `<span class="badge badge-green">N/A</span>`;
-  if (aqi <= 50) return `<span class="badge badge-green">Bueno</span>`;
-  if (aqi <= 100) return `<span class="badge badge-yellow">Moderado</span>`;
-  return `<span class="badge badge-red">Malo</span>`;
-}
-
-function getUVBadge(uv) {
-  if (uv == null) return `<span class="badge badge-green">N/A</span>`;
-  if (uv <= 2) return `<span class="badge badge-green">Bajo</span>`;
-  if (uv <= 5) return `<span class="badge badge-yellow">Medio</span>`;
-  if (uv <= 7) return `<span class="badge badge-red">Alto</span>`;
-  return `<span class="badge badge-purple">Extremo</span>`;
-}
-
-/* AUTOCOMPLETE */
-const cityInput = document.getElementById("city");
-const autocomplete = document.getElementById("autocomplete");
-
-cityInput.addEventListener("input", async (e) => {
-  selectedLat = null; selectedLon = null; selectedLocationName = "";
-  const q = e.target.value.trim();
-  if (q.length < 3) { autocomplete.style.display = "none"; return; }
-  try {
-    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6`);
-    const data = await res.json();
-    autocomplete.innerHTML = "";
-    data.features.forEach(item => {
-      const p = item.properties;
-      const name = p.name || "", city = p.city || "", state = p.state || "", country = p.country || "";
-      const div = document.createElement("div");
-      div.className = "autocomplete-item";
-      div.innerHTML = `<div class="autocomplete-name">${name}</div><div class="autocomplete-detail">${city} ${state ? state + ", " : ""}${country}</div>`;
-      div.onclick = () => {
-        cityInput.value = `${name}${city ? ", " + city : ""}, ${country}`;
-        selectedLat = item.geometry.coordinates[1]; selectedLon = item.geometry.coordinates[0];
-        selectedLocationName = `${name}${state ? ", " + state : ""}${country ? ", " + country : ""}`;
-        autocomplete.style.display = "none";
-        cargar(selectedLat, selectedLon);
-      };
-      autocomplete.appendChild(div);
-    });
-    autocomplete.style.display = data.features.length ? "block" : "none";
-  } catch (e) { console.error("Error en autocompletado:", e); }
-});
-
-document.addEventListener("click", (e) => { if (!autocomplete.contains(e.target) && e.target !== cityInput) autocomplete.style.display = "none"; });
-
-function buscarManual() {
-  if (selectedLat != null && selectedLon != null) { cargar(selectedLat, selectedLon); return; }
-  const city = cityInput.value.trim();
-  if (!city) return;
-  selectedLocationName = "";
-  fetch(`/api/weather?city=${encodeURIComponent(city)}`).then(r => r.json()).then(data => { render(data); });
-}
-
-function cargar(lat, lon) {
-  fetch(`/api/weather?lat=${lat}&lon=${lon}`).then(r => r.json()).then(data => { render(data); });
-}
-
-/* RENDER DINÁMICO */
-function render(data) {
-  initMap(data.location.lat, data.location.lon, data.extra?.owmKey);
-
-  const mainDesc = data.models.sources.openweather?.desc || "";
-  
-  document.getElementById("temp").innerHTML = data.consensus != null 
-      ? `<div style="display: flex; align-items: center; gap: 18px;"><i data-lucide="${getWeatherIcon(mainDesc)}" style="width: 50px; height: 50px; color: #fdba74;"></i> ${data.consensus} &deg;C</div>` 
-      : "-- &deg;C";
-
-  document.getElementById("confidence").innerText = `Confianza: ${data.confidence}`;
-  document.getElementById("avg").innerHTML = `Temperatura promedio modelos: ${data.models.average ?? "-"} &deg;C`;
-  document.getElementById("sources").innerHTML = `Fuentes de modelos activas: ${Object.values(data.models.sources).filter(s => s.temp != null).length}`;
-  document.getElementById("locationName").innerText = selectedLocationName || data.location?.name || "Ubicación desconocida";
-
-  // Tarjeta de IA (AJUSTE 3: Mostrará un mensaje de advertencia si la Key falla)
-  const aiCardHTML = `
-    <div style="background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 16px; padding: 20px; margin-top: 20px;">
-      <h3 style="margin: 0 0 10px 0; color: #60a5fa; font-size: 18px; display: flex; align-items: center; gap: 8px;"><i data-lucide="sparkles" style="width: 20px; height: 20px;"></i> Informe Inteligente</h3>
-      <p style="margin: 0; font-size: 16px; line-height: 1.5; color: ${data.ai_recommendation.includes('⚠️') ? '#facc15' : 'white'};">${data.ai_recommendation}</p>
-    </div>
-    <div style="width: 100%; height: 90px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; margin-top: 20px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4); font-size: 14px;">
-      Espacio reservado para AdSense (728x90)
-    </div>
-  `;
-  document.getElementById("ai-container").innerHTML = aiCardHTML;
-
-  // PREMIUM DATA
-  const pContainer = document.getElementById("premium-grid");
-  const p = data.premium;
-  pContainer.innerHTML = `
-    <div class="api-card">
-      <div class="api-title"><span>Calidad del Aire</span> ${getAQIBadge(p.aqi)}</div>
-      <div class="api-temp" style="font-size: 32px;">${p.aqi ?? "--"} <span style="font-size: 16px; color:#c0d4ea; font-weight: 500;">AQI</span></div>
-      <div class="api-detail"><i data-lucide="wind" style="width: 14px; height: 14px; vertical-align: middle;"></i> Micropartículas PM10: ${p.pm10 ?? "--"} µg/m³</div>
-    </div>
-    <div class="api-card">
-      <div class="api-title"><span>Índice UV Solar</span> ${getUVBadge(p.uv)}</div>
-      <div class="api-temp" style="font-size: 32px;">${p.uv ?? "--"} <span style="font-size: 16px; color:#c0d4ea; font-weight: 500;">Máx. Hoy</span></div>
-      <div class="api-detail"><i data-lucide="sun" style="width: 14px; height: 14px; vertical-align: middle;"></i> Evitar sol directo entre 10h y 16h</div>
-    </div>
-    <div class="api-card">
-      <div class="api-title"><span>Datos Agrometeorológicos</span> <i data-lucide="sprout" style="width: 20px; height: 20px; color: #4ade80;"></i></div>
-      <div class="api-detail" style="font-size: 16px; margin-bottom: 12px; color: white;">Prob. de Lluvia: <strong style="color: #60a5fa;">${p.rainProb ?? 0}%</strong></div>
-      <div class="api-detail" style="font-size: 16px; margin-bottom: 12px; color: white;">Humedad de Sup.: <strong>${p.agro.humidity ?? "--"}%</strong></div>
-      <div class="api-detail" style="font-size: 16px; color: white;">Riesgo Heladas: <strong style="color: ${p.agro.frost === 'Alta' ? '#f87171' : '#4ade80'};">${p.agro.frost}</strong></div>
-    </div>
-  `;
-
-  // PRONÓSTICO EXTENDIDO
-  const forecastContainer = document.getElementById("forecast");
-  if (data.daily && data.daily.length) {
-    forecastContainer.innerHTML = "";
-    data.daily.forEach(day => {
-      const dateParts = day.date.split("-");
-      const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}` : day.date;
-      forecastContainer.innerHTML += `
-        <div class="forecast-card">
-          <div class="forecast-date">${formattedDate}</div>
-          <div class="forecast-icon"><i data-lucide="${getWeatherIcon(day.code)}" style="width: 38px; height: 38px;"></i></div>
-          <div class="forecast-temps"><span style="color: #ef4444;">${day.max ?? "-"}°</span><span class="min">${day.min ?? "-"}°</span></div>
+  function renderUI(data) {
+    const html = `
+      <div class="panel">
+        <div class="consensus-box">
+          <div class="consensus-title">CONSENSO PONDERADO</div>
+          <div class="consensus-temp">${data.consensus ?? "--"} &deg;C</div>
+          <div class="location-name">${data.location.name}</div>
+          <div class="badge">Nivel de confianza: ${data.confidence.toUpperCase()}</div>
         </div>
-      `;
-    });
-  }
-
-  // MODELOS
-  const modelsContainer = document.getElementById("models-grid");
-  modelsContainer.innerHTML = "";
-  const names = { openweather: "OpenWeather", openmeteo: "Open-Meteo", metno: "MET Norway" };
-  for (const key in data.models.sources) {
-    const s = data.models.sources[key];
-    modelsContainer.innerHTML += `
-      <div class="api-card">
-        <div class="api-title"><span>${names[key]}</span><i data-lucide="${getWeatherIcon(s.desc || key)}" style="width: 20px; height: 20px; color: #9cc6ff;"></i></div>
-        <div class="api-temp">${s.temp ?? "-"} &deg;C</div>
-        <div class="api-detail">Humedad: ${s.humidity ?? "-"}%</div>
-        <div class="api-detail">Viento: ${s.wind ?? "-"} m/s</div>
-        <div class="api-detail ok">${s.desc ?? ""}</div>
+        <div id="map"></div>
+      </div>
+      
+      <div class="panel">
+        <h2 style="margin-top:0; margin-bottom: 1.5rem; font-size: 1.2rem;">Fuentes Analizadas</h2>
+        <div class="apis-grid" id="apis"></div>
       </div>
     `;
+    
+    document.getElementById("content").innerHTML = html;
+    
+    // Inicializar Mapa
+    setTimeout(() => {
+      if (mapInstance) { mapInstance.remove(); }
+      mapInstance = L.map('map').setView([data.location.lat, data.location.lon], 10);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+      }).addTo(mapInstance);
+      L.circleMarker([data.location.lat, data.location.lon], {
+        radius: 8, fillColor: "#3b82f6", color: "#fff", weight: 2, opacity: 1, fillOpacity: 0.8
+      }).addTo(mapInstance);
+    }, 100);
+
+    // Renderizar Tarjetas
+    const container = document.getElementById("apis");
+    const names = { openweather: "OpenWeather", openmeteo: "Open-Meteo", metno: "MET Norway" };
+    
+    // Modelos
+    for (const key in data.models.sources) {
+      const s = data.models.sources[key];
+      let icon = "cloud";
+      if (key === 'openweather') icon = "sun";
+      if (key === 'metno') icon = "wind";
+
+      container.innerHTML += `
+        <div class="api-card">
+          <div class="api-title">
+            <span>${names[key]}</span>
+            <i data-lucide="${icon}" style="width:18px; color:#60a5fa;"></i>
+          </div>
+          <div class="api-temp">${s.temp !== undefined ? s.temp : "-"} &deg;C</div>
+          ${s.humidity ? `<div class="api-detail">Humedad: ${s.humidity}%</div>` : ''}
+          ${s.wind ? `<div class="api-detail">Viento: ${s.wind} m/s</div>` : ''}
+        </div>
+      `;
+    }
+
+    // Observación METAR
+    if (data.observation.metar.temp !== undefined) {
+      container.innerHTML += `
+        <div class="api-card" style="border-color: #3b82f6;">
+          <div class="api-title">
+            <span style="color:#3b82f6;">METAR (Observación)</span>
+            <i data-lucide="plane" style="width:18px; color:#3b82f6;"></i>
+          </div>
+          <div class="api-temp">${data.observation.metar.temp} &deg;C</div>
+          <div class="api-detail">Estación: ${data.observation.metar.station}</div>
+          <div class="api-detail">${data.observation.metar.note}</div>
+        </div>
+      `;
+    }
+    lucide.createIcons();
   }
 
-  // OBSERVACIONES REALES
-  const obsContainer = document.getElementById("obs-grid");
-  obsContainer.innerHTML = `
-    <div class="api-card">
-      <div class="api-title"><span>Estación METAR</span><i data-lucide="plane" style="width: 20px; height: 20px; color: #b8dc61;"></i></div>
-      <div class="api-temp">${data.observation.metar.temp ?? "-"} &deg;C</div>
-      <div class="api-detail">${data.observation.metar.station}</div>
-      <div class="api-detail">${data.observation.metar.note ?? "Estación en rango (Aeronáutica)"}</div>
-    </div>
-    <div class="api-card">
-      <div class="api-title"><span>Meteostat</span><i data-lucide="thermometer" style="width: 20px; height: 20px; color: #b8dc61;"></i></div>
-      <div class="api-temp">${data.extra.meteostat.temp ?? "-"} &deg;C</div>
-      <div class="api-detail">${data.extra.meteostat.station || "Sin estación"}</div>
-      <div class="api-detail">${data.extra.meteostat.desc}</div>
-    </div>
-  `;
-
-  if (window.lucide) lucide.createIcons();
-}
+  // Auto-cargar San Luis al iniciar para probar el MVP rápido
+  window.onload = () => fetchWeather(-33.295, -66.335, "San Luis, Argentina");
 </script>
-
 </body>
 </html>
