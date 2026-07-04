@@ -93,57 +93,104 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
 }
 
 // =====================================================================
-// MOTOR DE CONSOLIDACIÓN MATEMÁTICA CON Z-SCORE (EXCLUSIÓN DE ANOMALÍAS)
+// MOTOR DE CONSOLIDACIÓN OPTIMIZADO (ANCLAJE POR VERDAD TERRESTRE)
 // =====================================================================
 function calculateAdvancedConsensus(sourcesArray) {
   const valid = sourcesArray.filter(s => s.temp != null);
   if (valid.length === 0) return { value: null, acceptedIds: [] };
 
-  // 1. Encontrar la Mediana para evitar que un dato loco desvíe el promedio
-  const temps = valid.map(s => s.temp).sort((a, b) => a - b);
-  const mid = Math.floor(temps.length / 2);
-  const median = temps.length % 2 !== 0 ? temps[mid] : (temps[mid - 1] + temps[mid]) / 2;
-
-  // 2. Filtro de desviación (Z-Score simplificado a rango fijo)
-  // AJUSTE PUNTUAL: Reducido a 2.0 grados para máxima precisión meteorológica
-  const MAX_DEVIATION = 2.0; 
-  const acceptedIds = [];
+  // Intentar identificar estaciones reales válidas para fijar el Anclaje Real
+  const metar = valid.find(s => s.type === 'metar');
+  const meteostat = valid.find(s => s.type === 'meteostat');
   
+  let groundTruthAnchor = null;
+  let realObsConsistent = false;
+
+  const tMetar = metar?.temp;
+  const tMeteostat = meteostat?.temp;
+
+  // Filtrar que las observaciones estén dentro de la cobertura espacial permitida
+  const isMetarNear = metar && (metar.distanceKm == null || metar.distanceKm <= METAR_MAX_DISTANCE_KM);
+  const isMeteostatNear = meteostat && (meteostat.distanceKm == null || meteostat.distanceKm <= METAR_MAX_DISTANCE_KM);
+
+  if (tMetar != null && tMeteostat != null && isMetarNear && isMeteostatNear) {
+    if (Math.abs(tMetar - tMeteostat) <= 3.0) {
+      // Consenso de Verdad Terrestre perfecto entre estaciones
+      groundTruthAnchor = (tMetar + tMeteostat) / 2;
+      realObsConsistent = true;
+    } else {
+      // Conflicto de lecturas reales: Se prioriza la estación físicamente más cercana
+      groundTruthAnchor = (metar.distanceKm || 0) <= (meteostat.distanceKm || 0) ? tMetar : tMeteostat;
+    }
+  } else if (tMetar != null && isMetarNear) {
+    groundTruthAnchor = tMetar;
+  } else if (tMeteostat != null && isMeteostatNear) {
+    groundTruthAnchor = tMeteostat;
+  }
+
+  const acceptedIds = [];
   let totalWeight = 0;
   let weightedSum = 0;
 
-  valid.forEach(s => {
-    // Verificar si la temperatura es "sana" o anómala, y si está dentro de un rango útil (para METAR)
-    let isAcceptable = Math.abs(s.temp - median) <= MAX_DEVIATION;
-    
-    // Si es una observación muy lejana, descartarla del consenso
-    if (s.type === 'metar' || s.type === 'meteostat') {
-      if (s.distanceKm != null && s.distanceKm > METAR_MAX_DISTANCE_KM) {
-        isAcceptable = false;
-      }
-    }
+  // Tolerancias límites de desviación métrica
+  const MAX_MODEL_DEVIATION_FROM_REAL = 4.5; // Margen tolerable a un modelo antes de considerarlo desfasado por la realidad
+  const MAX_MODEL_DEVIATION_FROM_MEDIAN = 2.0; // Respaldo tradicional si no hay estaciones reales cerca
 
-    if (isAcceptable) {
-      acceptedIds.push(s.id);
-      let weight = 1; // Peso base para modelos de simulación
+  // ESCENARIO A: Existe Verdad Terrestre disponible
+  if (groundTruthAnchor !== null) {
+    valid.forEach(s => {
+      let isAcceptable = false;
 
-      if (s.type === 'metar') {
-        // Regla de decaimiento: Más lejos = menor peso. (Máx 4.0, Mín 1.5)
-        const dist = s.distanceKm || 0;
-        weight = Math.max(1.5, 4.0 - (dist / 30));
-      } else if (s.type === 'meteostat') {
-        weight = 2.5;
+      if (s.type === 'metar' || s.type === 'meteostat') {
+        if (s.distanceKm == null || s.distanceKm <= METAR_MAX_DISTANCE_KM) {
+          isAcceptable = true; // Las observaciones válidas quedan inmunizadas frente al sesgo de modelos
+        }
+      } else if (s.type === 'model') {
+        // Los modelos numéricos se auditan y validan usando la superficie real
+        isAcceptable = Math.abs(s.temp - groundTruthAnchor) <= MAX_MODEL_DEVIATION_FROM_REAL;
       }
 
-      weightedSum += s.temp * weight;
-      totalWeight += weight;
-    }
-  });
+      if (isAcceptable) {
+        acceptedIds.push(s.id);
+        let weight = 1; // Peso base estándar para simulaciones
 
-  const finalValue = totalWeight > 0 ? (weightedSum / totalWeight).toFixed(1) : median.toFixed(1);
-  
+        if (s.type === 'metar') {
+          // Atenuación lineal por distancia física de la pista (Máx: 4.0, Mín: 1.5)
+          const dist = s.distanceKm || 0;
+          weight = Math.max(1.5, 4.0 - (dist / 30));
+        } else if (s.type === 'meteostat') {
+          weight = 2.5;
+        }
+
+        weightedSum += s.temp * weight;
+        totalWeight += weight;
+      }
+    });
+  } else {
+    // ESCENARIO B: Caída por Respaldo (Sin estaciones reales disponibles, se aplica el filtro por mediana)
+    const temps = valid.map(s => s.temp).sort((a, b) => a - b);
+    const mid = Math.floor(temps.length / 2);
+    const median = temps.length % 2 !== 0 ? temps[mid] : (temps[mid - 1] + temps[mid]) / 2;
+
+    valid.forEach(s => {
+      if (Math.abs(s.temp - median) <= MAX_MODEL_DEVIATION_FROM_MEDIAN) {
+        acceptedIds.push(s.id);
+        weightedSum += s.temp * 1;
+        totalWeight += 1;
+      }
+    });
+  }
+
+  // Prevención de error por división por cero
+  if (totalWeight === 0) {
+    const temps = valid.map(s => s.temp).sort((a, b) => a - b);
+    const mid = Math.floor(temps.length / 2);
+    const median = temps.length % 2 !== 0 ? temps[mid] : (temps[mid - 1] + temps[mid]) / 2;
+    return { value: median.toFixed(1), acceptedIds: [] };
+  }
+
   return {
-    value: finalValue,
+    value: (weightedSum / totalWeight).toFixed(1),
     acceptedIds: acceptedIds
   };
 }
@@ -225,10 +272,10 @@ export default async function handler(req, res) {
       { id: 'meteostat', type: 'meteostat', temp: meteostatData.temp, distanceKm: meteostatData.distanceKm }
     ];
 
-    // Calculamos el Consenso Global (Ponderado + Exclusión Outliers)
+    // Calculamos el Consenso Global (Ponderado + Exclusión Outliers basado en Verdad Terrestre)
     const generalAnalysis = calculateAdvancedConsensus(rawSources);
     
-    // Calculamos el Consenso SOLO de modelos (para la estadística pequeña)
+    // Calculamos el Consenso SOLO de modelos (cae correctamente en lógica de mediana al no pasar observaciones)
     const modelAnalysis = calculateAdvancedConsensus(rawSources.filter(s => s.type === 'model'));
 
     const isUsed = (id) => generalAnalysis.acceptedIds.includes(id);
