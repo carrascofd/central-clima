@@ -1,4 +1,4 @@
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutos
+const CACHE_TTL_MS = 10 * 60 * 1000;
 const METAR_MAX_DISTANCE_KM = 100;
 
 const cache = new Map();
@@ -18,206 +18,276 @@ function getCachedResponse(key) {
 }
 
 function setCachedResponse(key, data) {
-  cache.set(key, {
-    timestamp: Date.now(),
-    data
-  });
+  cache.set(key, { timestamp: Date.now(), data });
 }
 
 function distanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+function metarDistanceKm(obs, lat, lon) {
+  const meters = obs?.position?.distance?.meters;
+  if (typeof meters === "number") return meters / 1000;
+  const coords = obs?.station?.geometry?.coordinates;
+  if (coords?.length >= 2) return distanceKm(lat, lon, coords[1], coords[0]);
+  return null;
+}
+
+async function fetchNearestMetar(lat, lon, apiKey) {
+  if (!apiKey) return { temp: null, station: "Sin datos", distanceKm: null, note: "CHECKWX_KEY no configurada" };
+  const metarRes = await fetch(`https://api.checkwx.com/v2/metar/lat/${lat}/lon/${lon}/decoded?limit=1`, { headers: { "X-API-Key": apiKey } });
+  if (!metarRes.ok) return { temp: null, station: "METAR sin datos", distanceKm: null, note: null };
+  const metarData = await metarRes.json();
+  const obs = metarData?.data?.[0];
+  if (!obs) return { temp: null, station: "METAR sin datos", distanceKm: null, note: null };
+  
+  const distance = metarDistanceKm(obs, lat, lon);
+  const stationName = obs.station?.name ?? obs.station?.icao ?? obs.icao ?? "Estación desconocida";
+  const icao = obs.station?.icao ?? obs.icao ?? "";
+  const stationLabel = icao ? `${stationName} (${icao})` : stationName;
+
+  return {
+    temp: obs.temperature?.celsius ?? null,
+    station: stationLabel,
+    distanceKm: distance != null ? Number(distance.toFixed(1)) : null,
+    note: distance != null ? `A ${Math.round(distance)} km` : null
+  };
+}
+
+async function fetchMeteostatObservation(lat, lon, apiKey) {
+  const empty = { temp: null, station: null, distanceKm: null, desc: "Sin datos" };
+  if (!apiKey) return { ...empty, desc: "Meteostat no configurado" };
+  const headers = { "x-rapidapi-host": "meteostat.p.rapidapi.com", "x-rapidapi-key": apiKey };
+  const nearbyRes = await fetch(`https://meteostat.p.rapidapi.com/stations/nearby?lat=${lat}&lon=${lon}&limit=1`, { headers });
+  if (!nearbyRes.ok) return { ...empty, desc: "Sin estación cercana" };
+  
+  const nearbyData = await nearbyRes.json();
+  const station = nearbyData?.data?.[0];
+  if (!station) return { ...empty, desc: "Sin estación cercana" };
+
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(start.getDate() - 1);
+  const startStr = start.toISOString().slice(0, 10);
+  const endStr = end.toISOString().slice(0, 10);
+
+  const hourlyRes = await fetch(`https://meteostat.p.rapidapi.com/stations/hourly?station=${station.id}&start=${startStr}&end=${endStr}&model=false&units=metric`, { headers });
+  if (!hourlyRes.ok) return { ...empty, station: station.name?.en ?? station.id, desc: "Sin observaciones recientes" };
+
+  const hourlyData = await hourlyRes.json();
+  const rows = hourlyData?.data ?? [];
+  const latest = [...rows].reverse().find(row => row?.temp != null);
+  
+  if (!latest) return { ...empty, station: station.name?.en ?? station.id, desc: "Sin observaciones recientes" };
+
+  return {
+    temp: latest.temp,
+    station: station.name?.en ?? station.id,
+    distanceKm: station.distance != null ? Number((station.distance / 1000).toFixed(1)) : null,
+    desc: "Observación activa de estación"
+  };
 }
 
 // =====================================================================
-// NUEVO MOTOR DE CONSOLIDACIÓN PONDERADA Y RECHAZO DE OUTLIERS
+// MOTOR DE CONSOLIDACIÓN MATEMÁTICA CON Z-SCORE (EXCLUSIÓN DE ANOMALÍAS)
 // =====================================================================
-function calculateWeightedConsensus(sources) {
-  // 1. Extraer temperaturas válidas
-  const validSources = sources.filter(s => s && typeof s.temp === 'number');
-  if (validSources.length === 0) return null;
+function calculateAdvancedConsensus(sourcesArray) {
+  const valid = sourcesArray.filter(s => s.temp != null);
+  if (valid.length === 0) return { value: null, acceptedIds: [] };
 
-  // 2. Encontrar la Mediana (para ignorar valores atípicos extremos)
-  const temps = validSources.map(s => s.temp).sort((a, b) => a - b);
+  // 1. Encontrar la Mediana para evitar que un dato loco desvíe el promedio
+  const temps = valid.map(s => s.temp).sort((a, b) => a - b);
   const mid = Math.floor(temps.length / 2);
   const median = temps.length % 2 !== 0 ? temps[mid] : (temps[mid - 1] + temps[mid]) / 2;
 
-  // 3. Filtrar anomalías (rechazar fuentes que se desvíen más de 3°C de la mediana)
-  const MAX_DEVIATION = 3.0;
-  const reliableSources = validSources.filter(s => Math.abs(s.temp - median) <= MAX_DEVIATION);
-
-  if (reliableSources.length === 0) return median.toFixed(1); // Failsafe
-
-  // 4. Calcular Promedio Ponderado
+  // 2. Filtro de desviación (Z-Score simplificado a rango fijo)
+  const MAX_DEVIATION = 3.0; // Si una fuente varía más de 3°C de la mediana, se descarta
+  const acceptedIds = [];
+  
   let totalWeight = 0;
   let weightedSum = 0;
 
-  reliableSources.forEach(source => {
-    let weight = 1; // Peso base para modelos (OpenWeather, Open-Meteo, MET Norway)
-
-    if (source.type === 'metar') {
-      // El METAR pesa más mientras más cerca esté. Máximo peso 4, mínimo 1.5
-      const dist = source.distance || 0;
-      weight = Math.max(1.5, 4 - (dist / 30)); 
-    } else if (source.type === 'meteostat') {
-      weight = 2.5; // Observación de estaciones promediadas
+  valid.forEach(s => {
+    // Verificar si la temperatura es "sana" o anómala, y si está dentro de un rango útil (para METAR)
+    let isAcceptable = Math.abs(s.temp - median) <= MAX_DEVIATION;
+    
+    // Si es una observación muy lejana, descartarla del consenso
+    if (s.type === 'metar' || s.type === 'meteostat') {
+      if (s.distanceKm != null && s.distanceKm > METAR_MAX_DISTANCE_KM) {
+        isAcceptable = false;
+      }
     }
 
-    weightedSum += source.temp * weight;
-    totalWeight += weight;
+    if (isAcceptable) {
+      acceptedIds.push(s.id);
+      let weight = 1; // Peso base para modelos de simulación
+
+      if (s.type === 'metar') {
+        // Regla de decaimiento: Más lejos = menor peso. (Máx 4.0, Mín 1.5)
+        const dist = s.distanceKm || 0;
+        weight = Math.max(1.5, 4.0 - (dist / 30));
+      } else if (s.type === 'meteostat') {
+        weight = 2.5;
+      }
+
+      weightedSum += s.temp * weight;
+      totalWeight += weight;
+    }
   });
 
-  return (weightedSum / totalWeight).toFixed(1);
+  const finalValue = totalWeight > 0 ? (weightedSum / totalWeight).toFixed(1) : median.toFixed(1);
+  
+  return {
+    value: finalValue,
+    acceptedIds: acceptedIds
+  };
 }
 
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  const city = req.query.city;
+  const latQuery = req.query.lat;
+  const lonQuery = req.query.lon;
+
+  const OPENWEATHER_KEY = process.env.OPENWEATHER_KEY;
+  const CHECKWX_KEY = process.env.CHECKWX_KEY;
+  const METEOSTAT_KEY = process.env.METEOSTAT_KEY;
 
   try {
-    const { lat, lon, city } = req.query;
-    if (!lat || !lon) {
-      return res.status(400).json({ error: "Faltan parámetros lat y lon" });
+    let baseLat = latQuery ? parseFloat(latQuery) : null;
+    let baseLon = lonQuery ? parseFloat(lonQuery) : null;
+
+    if (!baseLat || !baseLon) {
+      const geoRes = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${OPENWEATHER_KEY}`);
+      const geoData = await geoRes.json();
+      if (!geoData?.length) return res.status(404).json({ error: "Ciudad no encontrada" });
+      baseLat = geoData[0].lat;
+      baseLon = geoData[0].lon;
     }
 
-    const baseLat = parseFloat(lat);
-    const baseLon = parseFloat(lon);
     const cacheKey = getCacheKey(baseLat, baseLon);
     const cached = getCachedResponse(cacheKey);
-
     if (cached) {
       res.setHeader("X-Cache", "HIT");
       return res.status(200).json(cached);
     }
 
-    let resolvedCityName = city || "Ubicación actual";
+    const [owRes, omRes, metRes, aqiRes, metarData, meteostatData] = await Promise.all([
+      fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&appid=${OPENWEATHER_KEY}`),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current=temperature_2m,wind_speed_10m,weather_code,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max,precipitation_probability_max&forecast_days=3&timezone=auto`),
+      fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`, { headers: { "User-Agent": "central-clima" } }),
+      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${baseLat}&longitude=${baseLon}&current=european_aqi,uv_index,pm10,pm2_5&timezone=auto`).catch(() => null),
+      fetchNearestMetar(baseLat, baseLon, CHECKWX_KEY).catch(() => ({ temp: null, station: "Error METAR", distanceKm: null, note: null })),
+      fetchMeteostatObservation(baseLat, baseLon, METEOSTAT_KEY).catch(() => ({ temp: null, station: null, distanceKm: null, desc: "Error Meteostat" }))
+    ]);
 
-    // 1. OpenWeather
-    let openweatherData = {};
-    try {
-      const owRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&lang=es&appid=d9987817b3eb27e4dbb35ce984cc5266`);
-      if (owRes.ok) openweatherData = await owRes.json();
-    } catch (e) { console.error("Error OpenWeather:", e); }
+    const owData = owRes.ok ? await owRes.json() : null;
+    const omData = omRes.ok ? await omRes.json() : null;
+    const metData = metRes.ok ? await metRes.json() : null;
+    const aqiData = aqiRes && aqiRes.ok ? await aqiRes.json() : null;
 
-    // 2. Open-Meteo
-    let openmeteoData = {};
-    try {
-      const omRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current_weather=true`);
-      if (omRes.ok) openmeteoData = await omRes.json();
-    } catch (e) { console.error("Error Open-Meteo:", e); }
+    const resolvedCityName = city || owData?.name || "Ubicación actual";
 
-    // 3. MET Norway
-    let metnoData = {};
-    try {
-      const mnRes = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`, {
-        headers: { "User-Agent": "CentralDeClima/1.0" }
-      });
-      if (mnRes.ok) metnoData = await mnRes.json();
-    } catch (e) { console.error("Error MET Norway:", e); }
-
-    // 4. METAR via CheckWX
-    let metarData = null;
-    let metarDistance = 999;
-    try {
-      const metarRes = await fetch(`https://api.checkwx.com/metar/lat/${baseLat}/lon/${baseLon}/radius/${METAR_MAX_DISTANCE_KM}/decoded`, {
-        headers: { "X-API-Key": "4bfcc583fbcf49e4ae0f055a40" }
-      });
-      if (metarRes.ok) {
-        const json = await metarRes.json();
-        if (json.data && json.data.length > 0) {
-          metarData = json.data[0];
-          if (metarData.station && metarData.station.geometry && metarData.station.geometry.coordinates) {
-            const [mLon, mLat] = metarData.station.geometry.coordinates;
-            metarDistance = distanceKm(baseLat, baseLon, mLat, mLon);
-          }
-        }
+    // 1. DATA PREMIUM Y PRONÓSTICO EXTENDIDO
+    const dailyForecast = [];
+    if (omData?.daily) {
+      for (let i = 0; i < omData.daily.time.length; i++) {
+        dailyForecast.push({
+          date: omData.daily.time[i],
+          max: omData.daily.temperature_2m_max?.[i] ?? null,
+          min: omData.daily.temperature_2m_min?.[i] ?? null,
+          code: omData.daily.weather_code?.[i] ?? null
+        });
       }
-    } catch (e) { console.error("Error METAR:", e); }
+    }
 
-    // 5. Meteostat (Alternativa Observacional)
-    let meteostatData = null;
-    try {
-      const stationsRes = await fetch(`https://meteostat.p.rapidapi.com/stations/nearby?lat=${baseLat}&lon=${baseLon}&limit=1`, {
-        headers: {
-          'X-RapidAPI-Key': 'TU_API_KEY_AQUI', // OPCIONAL SI LO USAS
-          'X-RapidAPI-Host': 'meteostat.p.rapidapi.com'
-        }
-      });
-      // Si usas meteostat, aquí extraes la temp. Por ahora lo dejamos nulo si no hay API válida.
-    } catch (e) { console.error("Error Meteostat:", e); }
+    const premium = {
+       aqi: aqiData?.current?.european_aqi ?? null,
+       pm10: aqiData?.current?.pm10 ?? null,
+       uv: omData?.daily?.uv_index_max?.[0] ?? aqiData?.current?.uv_index ?? null,
+       rainProb: omData?.daily?.precipitation_probability_max?.[0] ?? null,
+       agro: {
+         humidity: omData?.current?.relative_humidity_2m ?? null,
+         frost: (omData?.daily?.temperature_2m_min?.[0] <= 3) ? "Alta" : "Baja"
+       }
+    };
 
-
-    // Construcción de fuentes normalizadas
-    const owTemp = openweatherData?.main?.temp;
-    const omTemp = openmeteoData?.current_weather?.temperature;
-    const mnTemp = metnoData?.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature;
-    const metarTemp = metarData?.temperature?.celsius;
-
-    const sourcesForConsensus = [
-      { type: 'model', temp: owTemp },
-      { type: 'model', temp: omTemp },
-      { type: 'model', temp: mnTemp },
-      { type: 'metar', temp: metarTemp, distance: metarDistance },
-      // { type: 'meteostat', temp: meteostatTemp } // Descomentar si activas meteostat
+    // 2. EXTRACCIÓN DE TEMPERATURAS PARA CONSENSO
+    const rawSources = [
+      { id: 'openweather', type: 'model', temp: owData?.main?.temp },
+      { id: 'openmeteo', type: 'model', temp: omData?.current?.temperature_2m },
+      { id: 'metno', type: 'model', temp: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature },
+      { id: 'metar', type: 'metar', temp: metarData.temp, distanceKm: metarData.distanceKm },
+      { id: 'meteostat', type: 'meteostat', temp: meteostatData.temp, distanceKm: meteostatData.distanceKm }
     ];
 
-    // Calcula el nuevo consenso ponderado
-    const generalConsensus = calculateWeightedConsensus(sourcesForConsensus);
-    const modelConsensus = calculateWeightedConsensus(sourcesForConsensus.filter(s => s.type === 'model'));
+    // Calculamos el Consenso Global (Ponderado + Exclusión Outliers)
+    const generalAnalysis = calculateAdvancedConsensus(rawSources);
+    
+    // Calculamos el Consenso SOLO de modelos (para la estadística pequeña)
+    const modelAnalysis = calculateAdvancedConsensus(rawSources.filter(s => s.type === 'model'));
 
+    const isUsed = (id) => generalAnalysis.acceptedIds.includes(id);
+
+    // 3. ARMADO DEL OBJETO DE RESPUESTA
     const models = {
-      consensus: modelConsensus,
+      average: modelAnalysis.value,
       sources: {
-        openweather: {
-          temp: owTemp,
-          humidity: openweatherData?.main?.humidity,
-          wind: openweatherData?.wind?.speed,
-          desc: openweatherData?.weather?.[0]?.description
+        openweather: { 
+          temp: owData?.main?.temp ?? null, 
+          humidity: owData?.main?.humidity ?? null, 
+          wind: owData?.wind?.speed ?? null, 
+          desc: owData?.weather?.[0]?.description ?? "",
+          usedInConsensus: isUsed('openweather')
         },
-        openmeteo: {
-          temp: omTemp,
-          wind: openmeteoData?.current_weather?.windspeed
+        openmeteo: { 
+          temp: omData?.current?.temperature_2m ?? null, 
+          wind: omData?.current?.wind_speed_10m ?? null, 
+          desc: "Open-Meteo",
+          usedInConsensus: isUsed('openmeteo')
         },
-        metno: {
-          temp: mnTemp,
-          humidity: metnoData?.properties?.timeseries?.[0]?.data?.instant?.details?.relative_humidity,
-          wind: metnoData?.properties?.timeseries?.[0]?.data?.instant?.details?.wind_speed
+        metno: { 
+          temp: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature ?? null, 
+          humidity: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.relative_humidity ?? null, 
+          wind: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.wind_speed ?? null, 
+          desc: "MET Norway",
+          usedInConsensus: isUsed('metno')
         }
       }
     };
 
-    const metarPayload = metarTemp !== undefined ? {
-      temp: metarTemp,
-      station: metarData.icao,
-      note: `A ${metarDistance.toFixed(1)} km`
-    } : {};
-
     const result = {
-      consensus: generalConsensus,
-      confidence: sourcesForConsensus.filter(s => s.temp !== undefined).length >= 3 ? "alta" : "media",
-      location: {
-        name: resolvedCityName,
-        lat: baseLat,
-        lon: baseLon
-      },
+      consensus: generalAnalysis.value,
+      confidence: generalAnalysis.acceptedIds.length >= 3 ? "alta" : "media",
+      location: { name: resolvedCityName, lat: baseLat, lon: baseLon },
       models,
-      observation: { metar: metarPayload },
-      extra: { meteostat: {} } // Vacío por ahora
+      observation: { 
+        metar: {
+          ...metarData,
+          usedInConsensus: isUsed('metar')
+        }
+      },
+      premium,
+      extra: { 
+        meteostat: {
+          ...meteostatData,
+          usedInConsensus: isUsed('meteostat')
+        }, 
+        owmKey: OPENWEATHER_KEY 
+      },
+      daily: dailyForecast
     };
 
     setCachedResponse(cacheKey, result);
     res.setHeader("X-Cache", "MISS");
     return res.status(200).json(result);
-
+    
   } catch (error) {
-    console.error("Error global:", error);
-    return res.status(500).json({ error: "Error procesando el clima" });
+    console.error(error);
+    return res.status(500).json({ error: "Error backend", detail: error.message });
   }
 }
