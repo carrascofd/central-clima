@@ -350,12 +350,17 @@ function render(data) {
 
   document.getElementById("confidence").innerHTML = `Confiabilidad del algoritmo: <strong style="color: #4ade80;">${data.confidence.toUpperCase()}</strong>`;
   
-  // SOLUCIÓN AL PUNTO 3: conteos específicos
-  const activeModelsCount = Object.values(data.models.sources).filter(s => s.temp != null).length;
-  const totalSourcesCount = activeModelsCount + (data.observation.metar.temp != null ? 1 : 0) + (data.extra.meteostat.temp != null ? 1 : 0);
+  // CONTEOS ESPECÍFICOS BASADOS EN FUENTES DE CONFIANZA
+  const totalModelsCount = Object.values(data.models.sources).filter(s => s.temp != null).length;
+  const includedModelsCount = Object.values(data.models.sources).filter(s => s.usedInConsensus).length;
+  
+  // Sumamos solo las estaciones meteorológicas reales si efectivamente fueron incluidas
+  const totalSourcesCount = includedModelsCount + 
+    (data.observation.metar.usedInConsensus ? 1 : 0) + 
+    (data.extra.meteostat.usedInConsensus ? 1 : 0);
 
-  document.getElementById("avg").innerHTML = `Promedio estricto de modelos: <strong>${data.models.average ?? "-"} &deg;C</strong> <span style="font-size: 14px; color:#9fb0c7;">(analizando ${activeModelsCount} modelos)</span>`;
-  document.getElementById("sources").innerHTML = `Consenso general: <strong>${totalSourcesCount} fuentes totales</strong> analizadas`;
+  document.getElementById("avg").innerHTML = `Promedio estricto de modelos: <strong>${data.models.average ?? "-"} &deg;C</strong> <span style="font-size: 14px; color:#9fb0c7;">(evaluando ${totalModelsCount} modelos)</span>`;
+  document.getElementById("sources").innerHTML = `Consenso general: <strong>${totalSourcesCount} fuentes integradas</strong> al promedio`;
   
   document.getElementById("locationName").innerText = selectedLocationName || data.location?.name || "Ubicación desconocida";
 
