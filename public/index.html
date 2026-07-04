@@ -6,6 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Central de Clima</title>
 
+<link rel="icon" type="image/png" href="logo_icono.png" />
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -103,10 +105,13 @@ body {
 .badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
 .badge-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
 
-/* LEYENDA FOOTER */
+/* LEYENDA Y FOOTER */
 .legend-footer {
   margin-top: 40px; padding: 20px; background: rgba(18, 25, 42, 0.6); border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05); text-align: center; color: #9fb0c7; font-size: 13px; line-height: 1.6;
+  border: 1px solid rgba(255, 255, 255, 0.05); text-align: left; color: #9fb0c7; font-size: 13px; line-height: 1.6;
+}
+.copyright-footer {
+  text-align: center; color: rgba(255, 255, 255, 0.4); font-size: 13px; margin-top: 30px; letter-spacing: 0.5px;
 }
 
 @media(max-width:900px) {
@@ -188,9 +193,13 @@ body {
   <div class="api-grid obs-grid" id="obs-grid"></div>
 
   <div class="legend-footer">
-    <strong>Leyenda de Consolidación de Datos:</strong><br><br>
+    <div style="text-align: center; margin-bottom: 12px; font-size: 14px;"><strong>Leyenda de Consolidación de Datos:</strong></div>
     <span class="badge badge-green"><i data-lucide="check-circle" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:2px;"></i> Ponderado</span> La fuente aportó datos precisos y fiables que fueron utilizados para el cálculo ponderado de la temperatura actual.<br><br>
-    <span class="badge badge-red"><i data-lucide="x-circle" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:2px;"></i> Excluido</span> La fuente fue rechazada temporalmente del cálculo principal por presentar una anomalía térmica (>3°C de desviación), falta de datos o por estar demasiado lejos de la ubicación (solo observaciones). Sus datos extra siguen disponibles.
+    <span class="badge badge-red"><i data-lucide="x-circle" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:2px;"></i> Excluido</span> La fuente fue rechazada temporalmente del cálculo principal por presentar una anomalía térmica (>2°C de desviación de la mediana), falta de datos o por estar demasiado lejos de la ubicación. Sus datos extra siguen disponibles.
+  </div>
+
+  <div class="copyright-footer">
+    &copy;2026 - FDC Apps & Webs
   </div>
 
 </div>
@@ -337,8 +346,14 @@ function render(data) {
       : "-- &deg;C";
 
   document.getElementById("confidence").innerHTML = `Confiabilidad del algoritmo: <strong style="color: #4ade80;">${data.confidence.toUpperCase()}</strong>`;
-  document.getElementById("avg").innerHTML = `Promedio estricto de modelos: <strong>${data.models.average ?? "-"} &deg;C</strong>`;
-  document.getElementById("sources").innerHTML = `Fuentes analizadas (Total): ${Object.values(data.models.sources).filter(s => s.temp != null).length + (data.observation.metar.temp != null ? 1 : 0) + (data.extra.meteostat.temp != null ? 1 : 0)}`;
+  
+  // SOLUCIÓN AL PUNTO 3: conteos específicos
+  const activeModelsCount = Object.values(data.models.sources).filter(s => s.temp != null).length;
+  const totalSourcesCount = activeModelsCount + (data.observation.metar.temp != null ? 1 : 0) + (data.extra.meteostat.temp != null ? 1 : 0);
+
+  document.getElementById("avg").innerHTML = `Promedio estricto de modelos: <strong>${data.models.average ?? "-"} &deg;C</strong> <span style="font-size: 14px; color:#9fb0c7;">(analizando ${activeModelsCount} modelos)</span>`;
+  document.getElementById("sources").innerHTML = `Consenso general: <strong>${totalSourcesCount} fuentes totales</strong> analizadas`;
+  
   document.getElementById("locationName").innerText = selectedLocationName || data.location?.name || "Ubicación desconocida";
 
   // PREMIUM DATA

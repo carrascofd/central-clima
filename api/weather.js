@@ -105,7 +105,8 @@ function calculateAdvancedConsensus(sourcesArray) {
   const median = temps.length % 2 !== 0 ? temps[mid] : (temps[mid - 1] + temps[mid]) / 2;
 
   // 2. Filtro de desviación (Z-Score simplificado a rango fijo)
-  const MAX_DEVIATION = 3.0; // Si una fuente varía más de 3°C de la mediana, se descarta
+  // AJUSTE PUNTUAL: Reducido a 2.0 grados para máxima precisión meteorológica
+  const MAX_DEVIATION = 2.0; 
   const acceptedIds = [];
   
   let totalWeight = 0;
@@ -146,7 +147,6 @@ function calculateAdvancedConsensus(sourcesArray) {
     acceptedIds: acceptedIds
   };
 }
-
 
 export default async function handler(req, res) {
   const city = req.query.city;
