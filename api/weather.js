@@ -50,7 +50,6 @@ async function fetchNearestMetar(lat, lon, apiKey) {
   const icao = obs.station?.icao ?? obs.icao ?? "";
   const stationLabel = icao ? `${stationName} (${icao})` : stationName;
 
-  // Extracción de la hora real de la observación METAR
   const obsTimeStr = obs.observed;
   const obsTime = obsTimeStr ? new Date(obsTimeStr).getTime() : null;
   let timeDesc = "";
@@ -94,11 +93,9 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
   
   if (!latest) return { ...empty, station: station.name?.en ?? station.id, desc: "Sin observaciones recientes" };
 
-  // Extracción de la hora real de Meteostat
   let obsTime = null;
   let timeDesc = "";
   if (latest.time) {
-    // Formato Meteostat: "YYYY-MM-DD HH:mm:ss", lo convertimos asumiendo UTC por defecto de la API
     obsTime = new Date(latest.time.replace(' ', 'T') + 'Z').getTime();
     const diffH = Math.round((Date.now() - obsTime) / 3600000);
     timeDesc = diffH > 0 ? ` (hace ${diffH}h)` : " (reciente)";
@@ -113,16 +110,12 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
   };
 }
 
-// =====================================================================
-// MOTOR DE CONSOLIDACIÓN OPTIMIZADO (ANCLAJE POR VERDAD TERRESTRE Y TIEMPO)
-// =====================================================================
 function calculateAdvancedConsensus(sourcesArray) {
   const now = Date.now();
-  const MAX_AGE_MS = 5 * 60 * 60 * 1000; // Descartar cualquier observación con más de 5 horas de antigüedad
+  const MAX_AGE_MS = 5 * 60 * 60 * 1000;
 
   const valid = sourcesArray.filter(s => {
     if (s.temp == null) return false;
-    // Si es una estación meteorológica, validamos su timestamp
     if ((s.type === 'metar' || s.type === 'meteostat') && s.timestamp) {
       if (now - s.timestamp > MAX_AGE_MS) return false;
     }
@@ -135,7 +128,6 @@ function calculateAdvancedConsensus(sourcesArray) {
   const meteostat = valid.find(s => s.type === 'meteostat');
   
   let groundTruthAnchor = null;
-  let realObsConsistent = false;
 
   const tMetar = metar?.temp;
   const tMeteostat = meteostat?.temp;
@@ -146,17 +138,13 @@ function calculateAdvancedConsensus(sourcesArray) {
   if (tMetar != null && tMeteostat != null && isMetarNear && isMeteostatNear) {
     if (Math.abs(tMetar - tMeteostat) <= 3.0) {
       groundTruthAnchor = (tMetar + tMeteostat) / 2;
-      realObsConsistent = true;
     } else {
-      // CONFLICTO: Hay diferencia de más de 3 grados entre estaciones
       const ageMetar = metar.timestamp ? (now - metar.timestamp) : 0;
       const ageMeteostat = meteostat.timestamp ? (now - meteostat.timestamp) : 0;
       
-      // Si la diferencia de antigüedad es mayor a 1.5 horas, se prioriza la más reciente
       if (Math.abs(ageMetar - ageMeteostat) > 1.5 * 60 * 60 * 1000) {
         groundTruthAnchor = ageMetar < ageMeteostat ? tMetar : tMeteostat;
       } else {
-        // Si ambas son recientes, nos quedamos con la más cercana físicamente
         groundTruthAnchor = (metar.distanceKm || 0) <= (meteostat.distanceKm || 0) ? tMetar : tMeteostat;
       }
     }
@@ -179,7 +167,6 @@ function calculateAdvancedConsensus(sourcesArray) {
 
       if (s.type === 'metar' || s.type === 'meteostat') {
         if (s.distanceKm == null || s.distanceKm <= METAR_MAX_DISTANCE_KM) {
-          // CORRECCIÓN CLAVE: Ahora solo se acepta la estación si coincide con el ancla validada
           if (Math.abs(s.temp - groundTruthAnchor) <= 3.0) {
             isAcceptable = true; 
           }
@@ -204,7 +191,6 @@ function calculateAdvancedConsensus(sourcesArray) {
       }
     });
   } else {
-    // Sin Verdad Terrestre (Respaldo por mediana para modelos)
     const temps = valid.map(s => s.temp).sort((a, b) => a - b);
     const mid = Math.floor(temps.length / 2);
     const median = temps.length % 2 !== 0 ? temps[mid] : (temps[mid - 1] + temps[mid]) / 2;
@@ -231,10 +217,54 @@ function calculateAdvancedConsensus(sourcesArray) {
   };
 }
 
+// =====================================================================
+// GENERADOR DINÁMICO DE CONTENIDO PARA INSTAGRAM (EVITA FILTRO DE SPAM)
+// =====================================================================
+function generateInstagramPayload(data) {
+  const cleanCityName = data.location.name.replace(/\s+/g, '');
+  
+  const intros = [
+    `📍 REPORTE DEL CLIMA | ${data.location.name}\n\nEl análisis consolidado de hoy muestra una temperatura de ${data.consensus}°C. Nuestro algoritmo procesó las tendencias principales para darte el dato más preciso del momento.`,
+    `🌍 ACTUALIZACIÓN CLIMÁTICA | ${data.location.name}\n\nPasamos por el colador los principales modelos numéricos y el consenso matemático nos da ${data.consensus}°C para hoy. Te dejamos el desglose técnico de la jornada:`,
+    `📊 CONSENSO DEL TIEMPO | ${data.location.name}\n\n¿Qué dice nuestra optimización hoy? Monitoreamos estaciones físicas y simulaciones para consolidar una temperatura real de ${data.consensus}°C. Así se ven los datos duros:`
+  ];
+
+  const outros = [
+    `\n\n💻 Datos procesados en tiempo real por Central de Clima.\n\n#Clima #${cleanCityName} #Meteorologia #Agro #ConsensoClimatico`,
+    `\n\n🚀 Monitoreo continuo automatizado por Central de Clima.\n\n#Tiempo #${cleanCityName} #Agrotecnologia #DataScience #ClimaHoy`,
+    `\n\n🌾 Optimización de datos meteorológicos de precisión.\n\n#Meteorologia #${cleanCityName} #CampoArgentino #SmartFarming #Consenso`
+  ];
+
+  // Variabilidad basada en el día del mes para asegurar rotación automática diaria
+  const dayIndex = new Date().getDate();
+  const intro = intros[dayIndex % intros.length];
+  const outro = outros[dayIndex % outros.length];
+
+  const body = `
+🤖 Modelos Numéricos:
+• Promedio de simulaciones: ${data.models.average}°C
+• Desviación analizada: Confianza ${data.confidence.toUpperCase()}
+
+📡 Verdad Terrestre (Estaciones Reales):
+• ${data.observation.metar.station || 'Estación Cercana'}: ${data.observation.metar.temp ?? '--'}°C (${data.observation.metar.note || 'Activa'})
+
+🌾 Indicadores de Campo y Salud:
+• Probabilidad de Precipitaciones: ${data.premium.rainProb ?? 0}%
+• Humedad en Superficie: ${data.premium.agro.humidity ?? '--'}%
+• Riesgo de Heladas: ${data.premium.agro.frost}
+• Índice UV Máximo: ${data.premium.uv ?? '--'}`;
+
+  return {
+    caption: `${intro}\n${body}${outro}`,
+    raw_data: data
+  };
+}
+
 export default async function handler(req, res) {
   const city = req.query.city;
   const latQuery = req.query.lat;
   const lonQuery = req.query.lon;
+  const format = req.query.format; // Captura el nuevo parámetro de formato
 
   const OPENWEATHER_KEY = process.env.OPENWEATHER_KEY;
   const CHECKWX_KEY = process.env.CHECKWX_KEY;
@@ -254,8 +284,12 @@ export default async function handler(req, res) {
 
     const cacheKey = getCacheKey(baseLat, baseLon);
     const cached = getCachedResponse(cacheKey);
+    
     if (cached) {
       res.setHeader("X-Cache", "HIT");
+      if (format === 'instagram') {
+        return res.status(200).json(generateInstagramPayload(cached));
+      }
       return res.status(200).json(cached);
     }
 
@@ -361,6 +395,10 @@ export default async function handler(req, res) {
 
     setCachedResponse(cacheKey, result);
     res.setHeader("X-Cache", "MISS");
+
+    if (format === 'instagram') {
+      return res.status(200).json(generateInstagramPayload(result));
+    }
     return res.status(200).json(result);
     
   } catch (error) {
