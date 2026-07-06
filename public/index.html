@@ -87,7 +87,8 @@ body {
 
 .section-title { font-size: 22px; margin: 36px 0 16px 0; color: #bcd3ee; font-weight: 600; display: flex; align-items: center; gap: 10px; }
 .api-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
-.obs-grid { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+/* Se ajusta obs-grid a minmax 300px para albergar simétricamente 3 tarjetas en horizontal */
+.obs-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 .premium-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 
 .api-card {
@@ -354,10 +355,11 @@ function render(data) {
   const totalModelsCount = Object.values(data.models.sources).filter(s => s.temp != null).length;
   const includedModelsCount = Object.values(data.models.sources).filter(s => s.usedInConsensus).length;
   
-  // Sumamos solo las estaciones meteorológicas reales si efectivamente fueron incluidas
+  // Se integra dinámicamente la REM en la sumatoria de fuentes agregadas al promedio
   const totalSourcesCount = includedModelsCount + 
     (data.observation.metar.usedInConsensus ? 1 : 0) + 
-    (data.extra.meteostat.usedInConsensus ? 1 : 0);
+    (data.extra.meteostat.usedInConsensus ? 1 : 0) +
+    (data.observation.rem?.usedInConsensus ? 1 : 0);
 
   document.getElementById("avg").innerHTML = `Promedio estricto de modelos: <strong>${data.models.average ?? "-"} &deg;C</strong> <span style="font-size: 14px; color:#9fb0c7;">(evaluando ${totalModelsCount} modelos)</span>`;
   document.getElementById("sources").innerHTML = `Consenso general: <strong>${totalSourcesCount} fuentes integradas</strong> al promedio`;
@@ -421,9 +423,18 @@ function render(data) {
     `;
   }
 
-  // OBSERVACIONES REALES
+  // OBSERVACIONES REALES E INTEGRACIÓN DE LA TARJETA REM SAN LUIS
   const obsContainer = document.getElementById("obs-grid");
+  const rem = data.observation.rem || { temp: null, station: "Red REM San Luis", note: "Fuera de cobertura regional", usedInConsensus: false };
+
   obsContainer.innerHTML = `
+    <div class="api-card">
+      <div class="api-title"><span>Red REM San Luis</span><i data-lucide="shield-check" style="width: 20px; height: 20px; color: #4ade80;"></i></div>
+      <div class="api-temp">${rem.temp !== null ? rem.temp + ' &deg;C' : '- &deg;C'}</div>
+      <div class="api-detail">${rem.station}</div>
+      <div class="api-detail">${rem.note}</div>
+      ${getConsensusStatusBadge(rem.usedInConsensus, rem.temp)}
+    </div>
     <div class="api-card">
       <div class="api-title"><span>Estación METAR</span><i data-lucide="plane" style="width: 20px; height: 20px; color: #b8dc61;"></i></div>
       <div class="api-temp">${data.observation.metar.temp ?? "-"} &deg;C</div>
