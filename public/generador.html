@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Generador de Plantilla - Central de Clima</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+        h2 { color: #1e293b; margin-bottom: 5px; }
+        p { color: #64748b; margin-bottom: 25px; font-size: 14px; }
+        button {
+            background: #0070f3;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 20px;
+            box-shadow: 0 4px 14px rgba(0, 112, 243, 0.3);
+        }
+        button:hover { background: #0051cb; }
+        canvas {
+            border: 1px solid #e2e8f0;
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Plantilla Oficial de Instagram</h2>
+        <p id="status">Procesando diseño con tu logo...</p>
+        
+        <!-- Lienzo nativo de Instagram 1080x1080 escalado visualmente para la pantalla -->
+        <canvas id="canvas" width="1080" height="1080" style="width: 380px; height: 380px;"></canvas>
+        <br>
+        <button id="btnDownload">Descargar PNG Profesional</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const btn = document.getElementById('btnDownload');
+        const statusText = document.getElementById('status');
+
+        // 1. Crear el degradado lineal sutil (Celeste pastel superior a Blanco puro inferior)
+        const gradient = ctx.createLinearGradient(0, 0, 0, 1080);
+        gradient.addColorStop(0, '#EBF5FF'); 
+        gradient.addColorStop(1, '#FFFFFF'); 
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 1080, 1080);
+
+        // 2. Añadir el zócalo de texto institucional inferior de forma elegante
+        ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
+        ctx.fillStyle = "#8E9AA8";
+        ctx.textAlign = "center";
+        ctx.letterSpacing = "4px"; 
+        ctx.fillText("REPORTE METEOROLÓGICO DIARIO AUTOMATIZADO", 540, 1010);
+
+        // 3. Cargar el logo original del usuario y centrarlo cuidando sus proporciones
+        const img = new Image();
+        img.src = 'logo.png'; // Busca el archivo en la misma carpeta raíz
+        
+        img.onload = function() {
+            // Definimos un ancho ideal para el logo dentro del cuadro (aprox 48% del lienzo)
+            const targetWidth = 520;
+            const scaleRatio = targetWidth / img.width;
+            const targetHeight = img.height * scaleRatio;
+
+            // Calcular coordenadas exactas para el centro matemático del lienzo de 1080x1080
+            const x = (1080 - targetWidth) / 2;
+            const y = (1080 - targetHeight) / 2 - 25; // Ligero ajuste hacia arriba para equilibrar el texto inferior
+
+            ctx.drawImage(img, x, y, targetWidth, targetHeight);
+            statusText.innerText = "¡Imagen generada con éxito a 1080x1080!";
+        };
+
+        img.onerror = function() {
+            statusText.innerHTML = "<span style='color:red;'>⚠️ Error: No se encontró el archivo 'logo.png' en la misma carpeta.</span>";
+        };
+
+        // 4. Descarga limpia del archivo PNG final
+        btn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'instagram-fondo.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+    </script>
+</body>
+</html>
