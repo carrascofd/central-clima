@@ -87,23 +87,24 @@ body {
 
 .section-title { font-size: 22px; margin: 36px 0 16px 0; color: #bcd3ee; font-weight: 600; display: flex; align-items: center; gap: 10px; }
 .api-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
-/* Se ajusta obs-grid a minmax 300px para albergar simétricamente 3 tarjetas en horizontal */
 .obs-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 .premium-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 
+/* SE MODIFICA API-CARD PARA DAR ALINEACIÓN VERTICAL RESILIENTE */
 .api-card {
   background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 22px;
   padding: 22px; backdrop-filter: blur(12px); transition: 0.2s; position: relative;
+  display: flex; flex-direction: column; min-height: 220px;
 }
 .api-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); }
-.api-title { font-size: 18px; font-weight: 700; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; }
+.api-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
 .api-temp { font-size: 38px; font-weight: 700; margin-bottom: 12px; }
-.api-detail { color: #c0d4ea; margin-bottom: 8px; font-size: 14px; }
-.ok { color: #22c55e; }
+.api-detail { color: #c0d4ea; margin-bottom: 6px; font-size: 14px; line-height: 1.4; }
+.ok { color: #22c55e; margin-bottom: 14px; }
 
-/* BADGES PARA PREMIUM Y ESTADO DE CONSENSO */
+/* BADGES PARA PREMIUM Y SE ELIMINA ABSOLUTE EVITANDO SUPERPOSICIÓN */
 .badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
-.badge-status { position: absolute; bottom: 22px; right: 22px; display: flex; align-items: center; gap: 4px; }
+.badge-status { display: flex; align-items: center; gap: 4px; margin-top: auto; align-self: flex-start; }
 .badge-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
 .badge-yellow { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
 .badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
@@ -351,11 +352,9 @@ function render(data) {
 
   document.getElementById("confidence").innerHTML = `Confiabilidad del algoritmo: <strong style="color: #4ade80;">${data.confidence.toUpperCase()}</strong>`;
   
-  // CONTEOS ESPECÍFICOS BASADOS EN FUENTES DE CONFIANZA
   const totalModelsCount = Object.values(data.models.sources).filter(s => s.temp != null).length;
   const includedModelsCount = Object.values(data.models.sources).filter(s => s.usedInConsensus).length;
   
-  // Se integra dinámicamente la REM en la sumatoria de fuentes agregadas al promedio
   const totalSourcesCount = includedModelsCount + 
     (data.observation.metar.usedInConsensus ? 1 : 0) + 
     (data.extra.meteostat.usedInConsensus ? 1 : 0) +
@@ -423,7 +422,7 @@ function render(data) {
     `;
   }
 
-  // OBSERVACIONES REALES E INTEGRACIÓN DE LA TARJETA REM SAN LUIS
+  // OBSERVACIONES REALES (REM AHORA NUNCA SE TAPARÁ)
   const obsContainer = document.getElementById("obs-grid");
   const rem = data.observation.rem || { temp: null, station: "Red REM San Luis", note: "Fuera de cobertura regional", usedInConsensus: false };
 

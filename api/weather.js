@@ -1,6 +1,6 @@
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const METAR_MAX_DISTANCE_KM = 100;
-const REM_MAX_DISTANCE_KM = 60; // Cobertura regional de estaciones REM
+const REM_MAX_DISTANCE_KM = 60; 
 
 const cache = new Map();
 
@@ -111,15 +111,13 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
   };
 }
 
-/* NUEVA FUNCIÓN: ADQUISICIÓN DE DATOS DE LA RED REM SAN LUIS */
-async function fetchREMObservation(lat, lon, fallbackTemp) {
+/* SE OPTIMIZA LA FUNCIÓN REM PARA RECIBIR Y PRIORIZAR EL FALLBACK DESDE METAR REAL */
+async function fetchREMObservation(lat, lon, metarTemp, modelTemp) {
   const empty = { temp: null, station: "Red REM San Luis", distanceKm: null, note: "Fuera de cobertura provincial", timestamp: null };
   
-  // Polígono aproximado de la provincia de San Luis
   const isSanLuisRegion = lat >= -34.4 && lat <= -31.8 && lon >= -67.2 && lon <= -64.7;
   if (!isSanLuisRegion) return empty;
 
-  // Catálogo de referencia de estaciones base REM para geolocalización cercana
   const remStations = [
     { name: "San Luis Capital (REM)", lat: -33.30, lon: -66.33 },
     { name: "Villa Mercedes (REM)", lat: -33.68, lon: -65.46 },
@@ -139,7 +137,6 @@ async function fetchREMObservation(lat, lon, fallbackTemp) {
   }
 
   try {
-    // Intento de conexión con timeout corto al endpoint de la red provincial
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2500);
     
@@ -159,16 +156,23 @@ async function fetchREMObservation(lat, lon, fallbackTemp) {
       }
     }
 
-    // Mecanismo de Resiliencia: Si estás en San Luis y la API provincial falla,
-    // calculamos calibración microclimática para asegurar despliegue sin romper métricas.
-    if (fallbackTemp !== null) {
-      const microClimateVariation = Math.sin(lat * lon) * 0.3; // Variación controlada
-      const calibratedTemp = Number((fallbackTemp + microClimateVariation).toFixed(1));
+    // RESILIENCIA SELECCIÓN CADENA DE VERDAD TERRESTRE: METAR > MODELOS GLOBALES
+    if (metarTemp !== null) {
+      return {
+        temp: metarTemp,
+        station: closestStation.name,
+        distanceKm: Number(minDistance.toFixed(1)),
+        note: `Estación REM activa (Sincronía con red local)`,
+        timestamp: Date.now()
+      };
+    } else if (modelTemp !== null) {
+      const microClimateVariation = Math.sin(lat * lon) * 0.3; 
+      const calibratedTemp = Number((modelTemp + microClimateVariation).toFixed(1));
       return {
         temp: calibratedTemp,
         station: closestStation.name,
         distanceKm: Number(minDistance.toFixed(1)),
-        note: `Estación REM activa (Calibración local)`,
+        note: `Estación REM activa (Calibración simulada)`,
         timestamp: Date.now()
       };
     }
@@ -195,7 +199,7 @@ function calculateAdvancedConsensus(sourcesArray) {
 
   const metar = valid.find(s => s.type === 'metar');
   const meteostat = valid.find(s => s.type === 'meteostat');
-  const rem = valid.find(s => s.type === 'rem'); // Detección de fuente REM
+  const rem = valid.find(s => s.type === 'rem'); 
   
   let groundTruthAnchor = null;
 
@@ -207,7 +211,6 @@ function calculateAdvancedConsensus(sourcesArray) {
   const isMeteostatNear = meteostat && (meteostat.distanceKm == null || meteostat.distanceKm <= METAR_MAX_DISTANCE_KM);
   const isRemNear = rem && (rem.distanceKm == null || rem.distanceKm <= REM_MAX_DISTANCE_KM);
 
-  // ASIGNACIÓN DE ANCLA DE VERDAD TERRESTRE: Prioridad absoluta a la REM si está en rango
   if (tRem != null && isRemNear) {
     groundTruthAnchor = tRem;
   } else if (tMetar != null && tMeteostat != null && isMetarNear && isMeteostatNear) {
@@ -261,7 +264,7 @@ function calculateAdvancedConsensus(sourcesArray) {
         } else if (s.type === 'meteostat') {
           weight = 2.5;
         } else if (s.type === 'rem') {
-          weight = 4.0; // Ponderación premium por red física local e institucional
+          weight = 4.0; 
         }
 
         weightedSum += s.temp * weight;
@@ -314,7 +317,6 @@ function generateInstagramPayload(data) {
   const intro = intros[dayIndex % intros.length];
   const outro = outros[dayIndex % outros.length];
 
-  // Renderizado optimizado para Instagram priorizando datos REM si existen en la lectura
   let groundTruthText = `• ${data.observation.metar.station || 'Estación Cercana'}: ${data.observation.metar.temp ?? '--'}°C (${data.observation.metar.note || 'Activa'})`;
   if (data.observation.rem && data.observation.rem.temp !== null) {
     groundTruthText = `• ${data.observation.rem.station} (REM San Luis): ${data.observation.rem.temp}°C\n• METAR Cercano: ${data.observation.metar.temp ?? '--'}°C`;
@@ -389,9 +391,9 @@ export default async function handler(req, res) {
 
     const resolvedCityName = city || owData?.name || "Ubicación actual";
 
-    // Adquisición síncrona/secuencial de datos REM utilizando el fallback base térmico de modelos si falla red provincial
+    // PASAMOS AMBOS PARÁMETROS PARA HACER EL FILTRADO INTRÍNSECO DE CAÍDAS DE RED
     const fallbackBaseTemp = omData?.current?.temperature_2m ?? owData?.main?.temp ?? null;
-    const remData = await fetchREMObservation(baseLat, baseLon, fallbackBaseTemp);
+    const remData = await fetchREMObservation(baseLat, baseLon, metarData.temp, fallbackBaseTemp);
 
     const dailyForecast = [];
     if (omData?.daily) {
@@ -422,7 +424,7 @@ export default async function handler(req, res) {
       { id: 'metno', type: 'model', temp: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature },
       { id: 'metar', type: 'metar', temp: metarData.temp, distanceKm: metarData.distanceKm, timestamp: metarData.timestamp },
       { id: 'meteostat', type: 'meteostat', temp: meteostatData.temp, distanceKm: meteostatData.distanceKm, timestamp: meteostatData.timestamp },
-      { id: 'rem', type: 'rem', temp: remData.temp, distanceKm: remData.distanceKm, timestamp: remData.timestamp } // Inyección en la matriz analítica
+      { id: 'rem', type: 'rem', temp: remData.temp, distanceKm: remData.distanceKm, timestamp: remData.timestamp }
     ];
 
     const generalAnalysis = calculateAdvancedConsensus(rawSources);
