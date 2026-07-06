@@ -38,28 +38,38 @@ function metarDistanceKm(obs, lat, lon) {
 }
 
 async function fetchNearestMetar(lat, lon, apiKey) {
-  if (!apiKey) return { temp: null, station: "Sin datos", distanceKm: null, note: "CHECKWX_KEY no configurada" };
+  if (!apiKey) return { temp: null, station: "Sin datos", distanceKm: null, note: "CHECKWX_KEY no configurada", timestamp: null };
   const metarRes = await fetch(`https://api.checkwx.com/v2/metar/lat/${lat}/lon/${lon}/decoded?limit=1`, { headers: { "X-API-Key": apiKey } });
-  if (!metarRes.ok) return { temp: null, station: "METAR sin datos", distanceKm: null, note: null };
+  if (!metarRes.ok) return { temp: null, station: "METAR sin datos", distanceKm: null, note: null, timestamp: null };
   const metarData = await metarRes.json();
   const obs = metarData?.data?.[0];
-  if (!obs) return { temp: null, station: "METAR sin datos", distanceKm: null, note: null };
+  if (!obs) return { temp: null, station: "METAR sin datos", distanceKm: null, note: null, timestamp: null };
   
   const distance = metarDistanceKm(obs, lat, lon);
   const stationName = obs.station?.name ?? obs.station?.icao ?? obs.icao ?? "Estación desconocida";
   const icao = obs.station?.icao ?? obs.icao ?? "";
   const stationLabel = icao ? `${stationName} (${icao})` : stationName;
 
+  // Extracción de la hora real de la observación METAR
+  const obsTimeStr = obs.observed;
+  const obsTime = obsTimeStr ? new Date(obsTimeStr).getTime() : null;
+  let timeDesc = "";
+  if (obsTime) {
+    const diffH = Math.round((Date.now() - obsTime) / 3600000);
+    timeDesc = diffH > 0 ? ` (hace ${diffH}h)` : " (reciente)";
+  }
+
   return {
     temp: obs.temperature?.celsius ?? null,
     station: stationLabel,
     distanceKm: distance != null ? Number(distance.toFixed(1)) : null,
-    note: distance != null ? `A ${Math.round(distance)} km` : null
+    note: distance != null ? `A ${Math.round(distance)} km${timeDesc}` : null,
+    timestamp: obsTime
   };
 }
 
 async function fetchMeteostatObservation(lat, lon, apiKey) {
-  const empty = { temp: null, station: null, distanceKm: null, desc: "Sin datos" };
+  const empty = { temp: null, station: null, distanceKm: null, desc: "Sin datos", timestamp: null };
   if (!apiKey) return { ...empty, desc: "Meteostat no configurado" };
   const headers = { "x-rapidapi-host": "meteostat.p.rapidapi.com", "x-rapidapi-key": apiKey };
   const nearbyRes = await fetch(`https://meteostat.p.rapidapi.com/stations/nearby?lat=${lat}&lon=${lon}&limit=1`, { headers });
@@ -84,22 +94,43 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
   
   if (!latest) return { ...empty, station: station.name?.en ?? station.id, desc: "Sin observaciones recientes" };
 
+  // Extracción de la hora real de Meteostat
+  let obsTime = null;
+  let timeDesc = "";
+  if (latest.time) {
+    // Formato Meteostat: "YYYY-MM-DD HH:mm:ss", lo convertimos asumiendo UTC por defecto de la API
+    obsTime = new Date(latest.time.replace(' ', 'T') + 'Z').getTime();
+    const diffH = Math.round((Date.now() - obsTime) / 3600000);
+    timeDesc = diffH > 0 ? ` (hace ${diffH}h)` : " (reciente)";
+  }
+
   return {
     temp: latest.temp,
     station: station.name?.en ?? station.id,
     distanceKm: station.distance != null ? Number((station.distance / 1000).toFixed(1)) : null,
-    desc: "Observación activa de estación"
+    desc: `Observación activa${timeDesc}`,
+    timestamp: obsTime
   };
 }
 
 // =====================================================================
-// MOTOR DE CONSOLIDACIÓN OPTIMIZADO (ANCLAJE POR VERDAD TERRESTRE)
+// MOTOR DE CONSOLIDACIÓN OPTIMIZADO (ANCLAJE POR VERDAD TERRESTRE Y TIEMPO)
 // =====================================================================
 function calculateAdvancedConsensus(sourcesArray) {
-  const valid = sourcesArray.filter(s => s.temp != null);
+  const now = Date.now();
+  const MAX_AGE_MS = 5 * 60 * 60 * 1000; // Descartar cualquier observación con más de 5 horas de antigüedad
+
+  const valid = sourcesArray.filter(s => {
+    if (s.temp == null) return false;
+    // Si es una estación meteorológica, validamos su timestamp
+    if ((s.type === 'metar' || s.type === 'meteostat') && s.timestamp) {
+      if (now - s.timestamp > MAX_AGE_MS) return false;
+    }
+    return true;
+  });
+
   if (valid.length === 0) return { value: null, acceptedIds: [] };
 
-  // Intentar identificar estaciones reales válidas para fijar el Anclaje Real
   const metar = valid.find(s => s.type === 'metar');
   const meteostat = valid.find(s => s.type === 'meteostat');
   
@@ -109,18 +140,25 @@ function calculateAdvancedConsensus(sourcesArray) {
   const tMetar = metar?.temp;
   const tMeteostat = meteostat?.temp;
 
-  // Filtrar que las observaciones estén dentro de la cobertura espacial permitida
   const isMetarNear = metar && (metar.distanceKm == null || metar.distanceKm <= METAR_MAX_DISTANCE_KM);
   const isMeteostatNear = meteostat && (meteostat.distanceKm == null || meteostat.distanceKm <= METAR_MAX_DISTANCE_KM);
 
   if (tMetar != null && tMeteostat != null && isMetarNear && isMeteostatNear) {
     if (Math.abs(tMetar - tMeteostat) <= 3.0) {
-      // Consenso de Verdad Terrestre perfecto entre estaciones
       groundTruthAnchor = (tMetar + tMeteostat) / 2;
       realObsConsistent = true;
     } else {
-      // Conflicto de lecturas reales: Se prioriza la estación físicamente más cercana
-      groundTruthAnchor = (metar.distanceKm || 0) <= (meteostat.distanceKm || 0) ? tMetar : tMeteostat;
+      // CONFLICTO: Hay diferencia de más de 3 grados entre estaciones
+      const ageMetar = metar.timestamp ? (now - metar.timestamp) : 0;
+      const ageMeteostat = meteostat.timestamp ? (now - meteostat.timestamp) : 0;
+      
+      // Si la diferencia de antigüedad es mayor a 1.5 horas, se prioriza la más reciente
+      if (Math.abs(ageMetar - ageMeteostat) > 1.5 * 60 * 60 * 1000) {
+        groundTruthAnchor = ageMetar < ageMeteostat ? tMetar : tMeteostat;
+      } else {
+        // Si ambas son recientes, nos quedamos con la más cercana físicamente
+        groundTruthAnchor = (metar.distanceKm || 0) <= (meteostat.distanceKm || 0) ? tMetar : tMeteostat;
+      }
     }
   } else if (tMetar != null && isMetarNear) {
     groundTruthAnchor = tMetar;
@@ -132,30 +170,29 @@ function calculateAdvancedConsensus(sourcesArray) {
   let totalWeight = 0;
   let weightedSum = 0;
 
-  // Tolerancias límites de desviación métrica
-  const MAX_MODEL_DEVIATION_FROM_REAL = 4.5; // Margen tolerable a un modelo antes de considerarlo desfasado por la realidad
-  const MAX_MODEL_DEVIATION_FROM_MEDIAN = 2.0; // Respaldo tradicional si no hay estaciones reales cerca
+  const MAX_MODEL_DEVIATION_FROM_REAL = 4.5;
+  const MAX_MODEL_DEVIATION_FROM_MEDIAN = 2.0; 
 
-  // ESCENARIO A: Existe Verdad Terrestre disponible
   if (groundTruthAnchor !== null) {
     valid.forEach(s => {
       let isAcceptable = false;
 
       if (s.type === 'metar' || s.type === 'meteostat') {
         if (s.distanceKm == null || s.distanceKm <= METAR_MAX_DISTANCE_KM) {
-          isAcceptable = true; // Las observaciones válidas quedan inmunizadas frente al sesgo de modelos
+          // CORRECCIÓN CLAVE: Ahora solo se acepta la estación si coincide con el ancla validada
+          if (Math.abs(s.temp - groundTruthAnchor) <= 3.0) {
+            isAcceptable = true; 
+          }
         }
       } else if (s.type === 'model') {
-        // Los modelos numéricos se auditan y validan usando la superficie real
         isAcceptable = Math.abs(s.temp - groundTruthAnchor) <= MAX_MODEL_DEVIATION_FROM_REAL;
       }
 
       if (isAcceptable) {
         acceptedIds.push(s.id);
-        let weight = 1; // Peso base estándar para simulaciones
+        let weight = 1; 
 
         if (s.type === 'metar') {
-          // Atenuación lineal por distancia física de la pista (Máx: 4.0, Mín: 1.5)
           const dist = s.distanceKm || 0;
           weight = Math.max(1.5, 4.0 - (dist / 30));
         } else if (s.type === 'meteostat') {
@@ -167,7 +204,7 @@ function calculateAdvancedConsensus(sourcesArray) {
       }
     });
   } else {
-    // ESCENARIO B: Caída por Respaldo (Sin estaciones reales disponibles, se aplica el filtro por mediana)
+    // Sin Verdad Terrestre (Respaldo por mediana para modelos)
     const temps = valid.map(s => s.temp).sort((a, b) => a - b);
     const mid = Math.floor(temps.length / 2);
     const median = temps.length % 2 !== 0 ? temps[mid] : (temps[mid - 1] + temps[mid]) / 2;
@@ -181,7 +218,6 @@ function calculateAdvancedConsensus(sourcesArray) {
     });
   }
 
-  // Prevención de error por división por cero
   if (totalWeight === 0) {
     const temps = valid.map(s => s.temp).sort((a, b) => a - b);
     const mid = Math.floor(temps.length / 2);
@@ -228,8 +264,8 @@ export default async function handler(req, res) {
       fetch(`https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current=temperature_2m,wind_speed_10m,weather_code,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max,precipitation_probability_max&forecast_days=3&timezone=auto`),
       fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`, { headers: { "User-Agent": "central-clima" } }),
       fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${baseLat}&longitude=${baseLon}&current=european_aqi,uv_index,pm10,pm2_5&timezone=auto`).catch(() => null),
-      fetchNearestMetar(baseLat, baseLon, CHECKWX_KEY).catch(() => ({ temp: null, station: "Error METAR", distanceKm: null, note: null })),
-      fetchMeteostatObservation(baseLat, baseLon, METEOSTAT_KEY).catch(() => ({ temp: null, station: null, distanceKm: null, desc: "Error Meteostat" }))
+      fetchNearestMetar(baseLat, baseLon, CHECKWX_KEY).catch(() => ({ temp: null, station: "Error METAR", distanceKm: null, note: null, timestamp: null })),
+      fetchMeteostatObservation(baseLat, baseLon, METEOSTAT_KEY).catch(() => ({ temp: null, station: null, distanceKm: null, desc: "Error Meteostat", timestamp: null }))
     ]);
 
     const owData = owRes.ok ? await owRes.json() : null;
@@ -239,7 +275,6 @@ export default async function handler(req, res) {
 
     const resolvedCityName = city || owData?.name || "Ubicación actual";
 
-    // 1. DATA PREMIUM Y PRONÓSTICO EXTENDIDO
     const dailyForecast = [];
     if (omData?.daily) {
       for (let i = 0; i < omData.daily.time.length; i++) {
@@ -263,24 +298,19 @@ export default async function handler(req, res) {
        }
     };
 
-    // 2. EXTRACCIÓN DE TEMPERATURAS PARA CONSENSO
     const rawSources = [
       { id: 'openweather', type: 'model', temp: owData?.main?.temp },
       { id: 'openmeteo', type: 'model', temp: omData?.current?.temperature_2m },
       { id: 'metno', type: 'model', temp: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature },
-      { id: 'metar', type: 'metar', temp: metarData.temp, distanceKm: metarData.distanceKm },
-      { id: 'meteostat', type: 'meteostat', temp: meteostatData.temp, distanceKm: meteostatData.distanceKm }
+      { id: 'metar', type: 'metar', temp: metarData.temp, distanceKm: metarData.distanceKm, timestamp: metarData.timestamp },
+      { id: 'meteostat', type: 'meteostat', temp: meteostatData.temp, distanceKm: meteostatData.distanceKm, timestamp: meteostatData.timestamp }
     ];
 
-    // Calculamos el Consenso Global (Ponderado + Exclusión Outliers basado en Verdad Terrestre)
     const generalAnalysis = calculateAdvancedConsensus(rawSources);
-    
-    // Calculamos el Consenso SOLO de modelos (cae correctamente en lógica de mediana al no pasar observaciones)
     const modelAnalysis = calculateAdvancedConsensus(rawSources.filter(s => s.type === 'model'));
 
     const isUsed = (id) => generalAnalysis.acceptedIds.includes(id);
 
-    // 3. ARMADO DEL OBJETO DE RESPUESTA
     const models = {
       average: modelAnalysis.value,
       sources: {
