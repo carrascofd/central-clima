@@ -114,15 +114,14 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
 async function fetchREMObservation(lat, lon) {
   const emptyOutside = { temp: null, station: "Red REM San Luis", stationId: null, distanceKm: null, note: "Fuera de rango provincial", timestamp: null, visible: false };
   
-  // Encuadre regional amplio para cubrir la provincia de San Luis
-  const isSanLuisRegion = lat >= -36.0 && lat <= -31.5 && lon >= -68.5 && lon <= -64.0;
+  const isSanLuisRegion = lat >= -36.5 && lat <= -31.0 && lon >= -68.5 && lon <= -63.5;
   if (!isSanLuisRegion) return emptyOutside;
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
     
-    // Consumir el endpoint oficial provisto con el listado real de estaciones activas
+    // 1. Obtener listado dinámico de estaciones para calcular cercanía por coordenadas reales
     const stationsRes = await fetch('https://wsestaciones.sanluis.gob.ar/Modulos/Datos/Datos.aspx?function=estaciones', { signal: controller.signal }).catch(() => null);
     
     let targetStationId = null;
@@ -133,7 +132,6 @@ async function fetchREMObservation(lat, lon) {
       const stations = await stationsRes.json();
       if (Array.isArray(stations)) {
         stations.forEach(st => {
-          // Mapear campos tolerando variaciones de capitalización comunes de la API de San Luis
           const id = st.id ?? st.id_estacion ?? st.station_id;
           const name = st.nombre ?? st.name ?? st.estacion;
           const stLat = parseFloat(st.latitud ?? st.lat ?? st.latitude);
@@ -151,14 +149,14 @@ async function fetchREMObservation(lat, lon) {
       }
     }
 
-    // Fallback mapeado de forma idéntica al padrón real de la URL si falla el listado dinámico
+    // Fallback estático con mapeo e identificadores corregidos según padrón oficial
     if (!targetStationId) {
       const backupStations = [
         { id: "1", name: "Alto Pelado", lat: -34.039, lon: -66.308 },
+        { id: "2", name: "Anchorena", lat: -35.666, lon: -65.424 },
         { id: "46", name: "San Luis Rural", lat: -33.272, lon: -66.228 },
         { id: "58", name: "Aeropuerto San Luis", lat: -33.273, lon: -66.353 },
-        { id: "3", name: "Merlo", lat: -32.343, lon: -65.013 },
-        { id: "2", name: "Villa Mercedes", lat: -33.682, lon: -65.458 }
+        { id: "3", name: "Merlo", lat: -32.343, lon: -65.013 }
       ];
       backupStations.forEach(st => {
         const d = distanceKm(lat, lon, st.lat, st.lon);
@@ -170,45 +168,55 @@ async function fetchREMObservation(lat, lon) {
       });
     }
 
-    // Si la estación más cercana calculada queda fuera del umbral operacional, se oculta
     if (minDistance > REM_MAX_DISTANCE_KM) {
       clearTimeout(timeoutId);
       return emptyOutside;
     }
 
-    // Consultar el reporte meteorológico actual usando el ID verificado y emparejado
-    const currentRes = await fetch(`https://api.rem.sanluis.gov.ar/v1/current?id=${targetStationId}`, { signal: controller.signal }).catch(() => null);
+    // 2. Consultar las métricas de tiempo real en el endpoint operativo provisto
+    const currentRes = await fetch(`https://wsestaciones.sanluis.gob.ar/Modulos/Datos/Datos.aspx?function=minutos&EstacionId=${targetStationId}`, { signal: controller.signal }).catch(() => null);
     clearTimeout(timeoutId);
 
     if (currentRes && currentRes.ok) {
-      const currentData = await currentRes.json();
-      const realRemTemp = currentData?.temp ?? currentData?.temperature ?? currentData?.weather?.temp;
+      let currentData = await currentRes.json();
       
+      // Manejar tanto estructuras de respuesta en vector histórico como objetos directos de lectura
+      if (Array.isArray(currentData)) {
+        currentData = currentData[0] || {};
+      }
+
+      // Mapeo flexible de claves tolerando variaciones del set de datos de la REM
+      const realRemTemp = currentData.temperatura ?? currentData.Temperatura ?? currentData.temp ?? currentData.temperature;
+      const humidity = currentData.humedad ?? currentData.Humedad ?? currentData.humidity ?? currentData.hum;
+      const windSpeed = currentData.viento_velocidad ?? currentData.Viento_Velocidad ?? currentData.velocidad_viento ?? currentData.wind_speed ?? currentData.wind_speed_kmh;
+      const windDir = currentData.viento_direccion ?? currentData.Viento_Direccion ?? currentData.direccion_viento ?? currentData.wind_direction ?? currentData.wind_dir;
+      const pressure = currentData.presion ?? currentData.Presion ?? currentData.pressure ?? currentData.atmospheric_pressure;
+      const rain = currentData.precipitacion ?? currentData.Precipitacion ?? currentData.lluvia ?? currentData.rain ?? currentData.rain_today;
+
       if (realRemTemp !== undefined && realRemTemp !== null) {
         return {
           temp: parseFloat(realRemTemp),
-          station: currentData?.station_name ?? stationName,
+          station: stationName,
           stationId: targetStationId,
           distanceKm: Number(minDistance.toFixed(1)),
           note: `A ${minDistance.toFixed(1)} km de tu ubicación`,
-          humidity: currentData?.humidity ?? currentData?.weather?.humidity ?? currentData?.hum ?? null,
-          windSpeed: currentData?.wind_speed ?? currentData?.wind?.speed ?? currentData?.wind_speed_kmh ?? null,
-          windDir: currentData?.wind_direction ?? currentData?.wind_dir ?? null,
-          pressure: currentData?.pressure ?? currentData?.atmospheric_pressure ?? null,
-          rain: currentData?.rain ?? currentData?.precipitation ?? currentData?.rain_today ?? null,
+          humidity: humidity != null ? Math.round(parseFloat(humidity)) : null,
+          windSpeed: windSpeed != null ? Math.round(parseFloat(windSpeed)) : null,
+          windDir: windDir ? String(windDir).trim() : null,
+          pressure: pressure != null ? Math.round(parseFloat(pressure)) : null,
+          rain: rain != null ? parseFloat(rain) : null,
           timestamp: Date.now(),
           visible: true
         };
       }
     }
 
-    // Si la estación está caída, expone el estado real Offline sin romper la interfaz
     return { 
       temp: null, 
       station: stationName, 
       stationId: targetStationId,
       distanceKm: Number(minDistance.toFixed(1)), 
-      note: "Estación REM fuera de servicio o sin datos recientes", 
+      note: "Estación REM en mantenimiento o sin datos recientes", 
       timestamp: null, 
       visible: true 
     };
@@ -219,7 +227,7 @@ async function fetchREMObservation(lat, lon) {
       station: "Red REM San Luis", 
       stationId: null,
       distanceKm: null, 
-      note: "Error de enlace con la infraestructura REM", 
+      note: "Error de respuesta del nodo de datos provincial", 
       timestamp: null, 
       visible: true 
     };
@@ -307,7 +315,7 @@ function calculateAdvancedConsensus(sourcesArray) {
         } else if (s.type === 'meteostat') {
           weight = 2.5;
         } else if (s.type === 'rem') {
-          weight = 4.0; 
+          weight = 5.0; 
         }
 
         weightedSum += s.temp * weight;
