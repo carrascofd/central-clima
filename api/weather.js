@@ -111,75 +111,106 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
   };
 }
 
-/* SE OPTIMIZA LA FUNCIÓN REM PARA RECIBIR Y PRIORIZAR EL FALLBACK DESDE METAR REAL */
-async function fetchREMObservation(lat, lon, metarTemp, modelTemp) {
-  const empty = { temp: null, station: "Red REM San Luis", distanceKm: null, note: "Fuera de cobertura provincial", timestamp: null };
+async function fetchREMObservation(lat, lon) {
+  const emptyOutside = { temp: null, station: "Red REM San Luis", distanceKm: null, note: "Fuera de rango provincial", timestamp: null, visible: false };
   
-  const isSanLuisRegion = lat >= -34.4 && lat <= -31.8 && lon >= -67.2 && lon <= -64.7;
-  if (!isSanLuisRegion) return empty;
-
-  const remStations = [
-    { name: "San Luis Capital (REM)", lat: -33.30, lon: -66.33 },
-    { name: "Villa Mercedes (REM)", lat: -33.68, lon: -65.46 },
-    { name: "Merlo (REM)", lat: -32.34, lon: -65.01 },
-    { name: "Potrero de los Funes (REM)", lat: -33.22, lon: -66.23 }
-  ];
-
-  let closestStation = remStations[0];
-  let minDistance = Infinity;
-
-  for (const st of remStations) {
-    const d = distanceKm(lat, lon, st.lat, st.lon);
-    if (d < minDistance) {
-      minDistance = d;
-      closestStation = st;
-    }
-  }
+  // Verificación perimetral de la Provincia de San Luis
+  const isSanLuisRegion = lat >= -34.5 && lat <= -31.5 && lon >= -67.5 && lon <= -64.3;
+  if (!isSanLuisRegion) return emptyOutside;
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
     
-    const res = await fetch(`https://api.rem.sanluis.gov.ar/v1/current?lat=${lat}&lon=${lon}`, { signal: controller.signal }).catch(() => null);
+    // Consulta al listado general de estaciones dinámicas de la REM
+    const stationsRes = await fetch('https://api.rem.sanluis.gov.ar/v1/stations', { signal: controller.signal }).catch(() => null);
+    
+    let targetStationId = null;
+    let stationName = "Estación REM";
+    let minDistance = Infinity;
+
+    if (stationsRes && stationsRes.ok) {
+      const stations = await stationsRes.json();
+      if (Array.isArray(stations)) {
+        stations.forEach(st => {
+          const stLat = st.lat ?? st.latitude;
+          const stLon = st.lon ?? st.longitude ?? st.lng;
+          const id = st.id ?? st.station_id ?? st.id_estacion;
+          if (stLat && stLon && id) {
+            const d = distanceKm(lat, lon, parseFloat(stLat), parseFloat(stLon));
+            if (d < minDistance) {
+              minDistance = d;
+              targetStationId = id;
+              stationName = st.name ?? st.nombre ?? stationName;
+            }
+          }
+        });
+      }
+    }
+
+    // Estaciones de respaldo estáticas si la consulta de la lista falla
+    if (!targetStationId) {
+      const backupStations = [
+        { id: "1", name: "San Luis Capital (REM)", lat: -33.30, lon: -66.33 },
+        { id: "2", name: "Villa Mercedes (REM)", lat: -33.68, lon: -65.46 },
+        { id: "3", name: "Merlo (REM)", lat: -32.34, lon: -65.01 },
+        { id: "4", name: "Potrero de los Funes (REM)", lat: -33.22, lon: -66.23 }
+      ];
+      backupStations.forEach(st => {
+        const d = distanceKm(lat, lon, st.lat, st.lon);
+        if (d < minDistance) {
+          minDistance = d;
+          targetStationId = st.id;
+          stationName = st.name;
+        }
+      });
+    }
+
+    // Si la estación más cercana supera el radio máximo razonable de cobertura, se oculta el cuadro
+    if (minDistance > REM_MAX_DISTANCE_KM) {
+      clearTimeout(timeoutId);
+      return emptyOutside;
+    }
+
+    // Consulta de los datos actuales reales asociados al ID de la estación más cercana
+    const currentRes = await fetch(`https://api.rem.sanluis.gov.ar/v1/current?id=${targetStationId}`, { signal: controller.signal }).catch(() => null);
     clearTimeout(timeoutId);
 
-    if (res && res.ok) {
-      const data = await res.json();
-      if (data && data.temp != null) {
+    if (currentRes && currentRes.ok) {
+      const currentData = await currentRes.json();
+      const realRemTemp = currentData?.temp ?? currentData?.temperature ?? currentData?.weather?.temp;
+      
+      if (realRemTemp !== undefined && realRemTemp !== null) {
         return {
-          temp: data.temp,
-          station: data.station_name || closestStation.name,
+          temp: parseFloat(realRemTemp),
+          station: currentData?.station_name ?? stationName,
           distanceKm: Number(minDistance.toFixed(1)),
-          note: `Dato REM en tiempo real`,
-          timestamp: Date.now()
+          note: `Dato real REM (Estación ID: ${targetStationId})`,
+          timestamp: Date.now(),
+          visible: true
         };
       }
     }
 
-    // RESILIENCIA SELECCIÓN CADENA DE VERDAD TERRESTRE: METAR > MODELOS GLOBALES
-    if (metarTemp !== null) {
-      return {
-        temp: metarTemp,
-        station: closestStation.name,
-        distanceKm: Number(minDistance.toFixed(1)),
-        note: `Estación REM activa (Sincronía con red local)`,
-        timestamp: Date.now()
-      };
-    } else if (modelTemp !== null) {
-      const microClimateVariation = Math.sin(lat * lon) * 0.3; 
-      const calibratedTemp = Number((modelTemp + microClimateVariation).toFixed(1));
-      return {
-        temp: calibratedTemp,
-        station: closestStation.name,
-        distanceKm: Number(minDistance.toFixed(1)),
-        note: `Estación REM activa (Calibración simulada)`,
-        timestamp: Date.now()
-      };
-    }
+    // Si está en San Luis pero la estación está caída, se muestra la tarjeta indicando el offline real sin simular datos
+    return { 
+      temp: null, 
+      station: stationName, 
+      distanceKm: Number(minDistance.toFixed(1)), 
+      note: "Estación REM temporalmente fuera de servicio", 
+      timestamp: null, 
+      visible: true 
+    };
 
-    return { ...empty, station: closestStation.name, note: "Estación offline" };
   } catch (e) {
-    return { ...empty, station: closestStation.name, note: "Error de enlace REM" };
+    return { 
+      temp: null, 
+      station: "Red REM San Luis", 
+      distanceKm: null, 
+      note: "Error de enlace con la infraestructura REM", 
+      timestamp: null, 
+      visible: true 
+    };
   }
 }
 
@@ -318,7 +349,7 @@ function generateInstagramPayload(data) {
   const outro = outros[dayIndex % outros.length];
 
   let groundTruthText = `• ${data.observation.metar.station || 'Estación Cercana'}: ${data.observation.metar.temp ?? '--'}°C (${data.observation.metar.note || 'Activa'})`;
-  if (data.observation.rem && data.observation.rem.temp !== null) {
+  if (data.observation.rem && data.observation.rem.temp !== null && data.observation.rem.visible !== false) {
     groundTruthText = `• ${data.observation.rem.station} (REM San Luis): ${data.observation.rem.temp}°C\n• METAR Cercano: ${data.observation.metar.temp ?? '--'}°C`;
   }
 
@@ -391,9 +422,7 @@ export default async function handler(req, res) {
 
     const resolvedCityName = city || owData?.name || "Ubicación actual";
 
-    // PASAMOS AMBOS PARÁMETROS PARA HACER EL FILTRADO INTRÍNSECO DE CAÍDAS DE RED
-    const fallbackBaseTemp = omData?.current?.temperature_2m ?? owData?.main?.temp ?? null;
-    const remData = await fetchREMObservation(baseLat, baseLon, metarData.temp, fallbackBaseTemp);
+    const remData = await fetchREMObservation(baseLat, baseLon);
 
     const dailyForecast = [];
     if (omData?.daily) {

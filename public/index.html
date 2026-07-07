@@ -90,7 +90,6 @@ body {
 .obs-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 .premium-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 
-/* SE MODIFICA API-CARD PARA DAR ALINEACIÓN VERTICAL RESILIENTE */
 .api-card {
   background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 22px;
   padding: 22px; backdrop-filter: blur(12px); transition: 0.2s; position: relative;
@@ -102,7 +101,7 @@ body {
 .api-detail { color: #c0d4ea; margin-bottom: 6px; font-size: 14px; line-height: 1.4; }
 .ok { color: #22c55e; margin-bottom: 14px; }
 
-/* BADGES PARA PREMIUM Y SE ELIMINA ABSOLUTE EVITANDO SUPERPOSICIÓN */
+/* BADGES EXCLUSIVOS */
 .badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
 .badge-status { display: flex; align-items: center; gap: 4px; margin-top: auto; align-self: flex-start; }
 .badge-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
@@ -220,7 +219,6 @@ let selectedLat = null;
 let selectedLon = null;
 let selectedLocationName = "";
 
-/* MAP INIT CON RADAR OWM */
 function initMap(lat, lon, owmKey) {
   if (!map) {
     map = L.map("map").setView([lat, lon], 10);
@@ -243,7 +241,6 @@ function initMap(lat, lon, owmKey) {
   }
 }
 
-/* GEOLOCATION */
 window.onload = () => {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => {
@@ -252,7 +249,6 @@ window.onload = () => {
   }
 };
 
-/* UTILIDADES ICONOS Y BADGES */
 function getWeatherIcon(descOrCode) {
   if (typeof descOrCode === 'number') {
     const code = descOrCode;
@@ -295,7 +291,6 @@ function getConsensusStatusBadge(isUsed, temp) {
   return `<span class="badge badge-status badge-red" title="Excluido por desviación extrema o fuera de rango"><i data-lucide="x-circle" style="width:14px; height:14px;"></i> Excluido</span>`;
 }
 
-/* AUTOCOMPLETE */
 const cityInput = document.getElementById("city");
 const autocomplete = document.getElementById("autocomplete");
 
@@ -340,7 +335,6 @@ function cargar(lat, lon) {
   fetch(`/api/weather?lat=${lat}&lon=${lon}`).then(r => r.json()).then(data => { render(data); });
 }
 
-/* RENDER DINÁMICO */
 function render(data) {
   initMap(data.location.lat, data.location.lon, data.extra?.owmKey);
 
@@ -352,8 +346,8 @@ function render(data) {
 
   document.getElementById("confidence").innerHTML = `Confiabilidad del algoritmo: <strong style="color: #4ade80;">${data.confidence.toUpperCase()}</strong>`;
   
-  const totalModelsCount = Object.values(data.models.sources).filter(s => s.temp != null).length;
   const includedModelsCount = Object.values(data.models.sources).filter(s => s.usedInConsensus).length;
+  const totalModelsCount = Object.values(data.models.sources).filter(s => s.temp != null).length;
   
   const totalSourcesCount = includedModelsCount + 
     (data.observation.metar.usedInConsensus ? 1 : 0) + 
@@ -422,18 +416,25 @@ function render(data) {
     `;
   }
 
-  // OBSERVACIONES REALES (REM AHORA NUNCA SE TAPARÁ)
+  // OBSERVACIONES REALES (CON OCULTAMIENTO Y REDIMENSIONAMIENTO DINÁMICO)
   const obsContainer = document.getElementById("obs-grid");
-  const rem = data.observation.rem || { temp: null, station: "Red REM San Luis", note: "Fuera de cobertura regional", usedInConsensus: false };
+  const rem = data.observation.rem;
+
+  let remCardHtml = "";
+  if (rem && rem.visible !== false) {
+    remCardHtml = `
+      <div class="api-card">
+        <div class="api-title"><span>Red REM San Luis</span><i data-lucide="shield-check" style="width: 20px; height: 20px; color: #4ade80;"></i></div>
+        <div class="api-temp">${rem.temp !== null ? rem.temp + ' &deg;C' : '- &deg;C'}</div>
+        <div class="api-detail">${rem.station}</div>
+        <div class="api-detail">${rem.note || ""}</div>
+        ${getConsensusStatusBadge(rem.usedInConsensus, rem.temp)}
+      </div>
+    `;
+  }
 
   obsContainer.innerHTML = `
-    <div class="api-card">
-      <div class="api-title"><span>Red REM San Luis</span><i data-lucide="shield-check" style="width: 20px; height: 20px; color: #4ade80;"></i></div>
-      <div class="api-temp">${rem.temp !== null ? rem.temp + ' &deg;C' : '- &deg;C'}</div>
-      <div class="api-detail">${rem.station}</div>
-      <div class="api-detail">${rem.note}</div>
-      ${getConsensusStatusBadge(rem.usedInConsensus, rem.temp)}
-    </div>
+    ${remCardHtml}
     <div class="api-card">
       <div class="api-title"><span>Estación METAR</span><i data-lucide="plane" style="width: 20px; height: 20px; color: #b8dc61;"></i></div>
       <div class="api-temp">${data.observation.metar.temp ?? "-"} &deg;C</div>
