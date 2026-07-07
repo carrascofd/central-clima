@@ -93,7 +93,7 @@ body {
 .api-card {
   background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 22px;
   padding: 22px; backdrop-filter: blur(12px); transition: 0.2s; position: relative;
-  display: flex; flex-direction: column; min-height: 220px;
+  display: flex; flex-direction: column; min-height: 240px;
 }
 .api-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); }
 .api-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
@@ -416,7 +416,7 @@ function render(data) {
     `;
   }
 
-  // OBSERVACIONES REALES (CON MAPEO COMPLETO DE METADATOS DE LA REM)
+  // OBSERVACIONES REALES
   const obsContainer = document.getElementById("obs-grid");
   const rem = data.observation.rem;
 
@@ -424,7 +424,6 @@ function render(data) {
   if (rem && rem.visible !== false) {
     let remFieldsHtml = "";
     
-    // Si la estación tiene datos válidos, armamos dinámicamente sus métricas secundarias
     if (rem.temp !== null) {
       if (rem.humidity !== null) {
         remFieldsHtml += `<div class="api-detail"><i data-lucide="droplet" style="width: 13px; height: 13px; vertical-align: middle; margin-right: 5px; color:#38bdf8;"></i>Humedad: ${rem.humidity}%</div>`;
