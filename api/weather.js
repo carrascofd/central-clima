@@ -112,7 +112,7 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
 }
 
 async function fetchREMObservation(lat, lon) {
-  const emptyOutside = { temp: null, station: "Red REM San Luis", distanceKm: null, note: "Fuera de rango provincial", timestamp: null, visible: false };
+  const emptyOutside = { temp: null, station: "Red REM San Luis", stationId: null, distanceKm: null, note: "Fuera de rango provincial", timestamp: null, visible: false };
   
   // Verificación perimetral de la Provincia de San Luis
   const isSanLuisRegion = lat >= -34.5 && lat <= -31.5 && lon >= -67.5 && lon <= -64.3;
@@ -151,10 +151,10 @@ async function fetchREMObservation(lat, lon) {
     // Estaciones de respaldo estáticas si la consulta de la lista falla
     if (!targetStationId) {
       const backupStations = [
-        { id: "1", name: "San Luis Capital (REM)", lat: -33.30, lon: -66.33 },
-        { id: "2", name: "Villa Mercedes (REM)", lat: -33.68, lon: -65.46 },
-        { id: "3", name: "Merlo (REM)", lat: -32.34, lon: -65.01 },
-        { id: "4", name: "Potrero de los Funes (REM)", lat: -33.22, lon: -66.23 }
+        { id: "1", name: "San Luis Capital", lat: -33.30, lon: -66.33 },
+        { id: "2", name: "Villa Mercedes", lat: -33.68, lon: -65.46 },
+        { id: "3", name: "Merlo", lat: -32.34, lon: -65.01 },
+        { id: "4", name: "Potrero de los Funes", lat: -33.22, lon: -66.23 }
       ];
       backupStations.forEach(st => {
         const d = distanceKm(lat, lon, st.lat, st.lon);
@@ -184,20 +184,27 @@ async function fetchREMObservation(lat, lon) {
         return {
           temp: parseFloat(realRemTemp),
           station: currentData?.station_name ?? stationName,
+          stationId: targetStationId,
           distanceKm: Number(minDistance.toFixed(1)),
-          note: `Dato real REM (Estación ID: ${targetStationId})`,
+          note: `A ${minDistance.toFixed(1)} km de tu ubicación`,
+          humidity: currentData?.humidity ?? currentData?.weather?.humidity ?? currentData?.hum ?? null,
+          windSpeed: currentData?.wind_speed ?? currentData?.wind?.speed ?? currentData?.wind_speed_kmh ?? null,
+          windDir: currentData?.wind_direction ?? currentData?.wind_dir ?? null,
+          pressure: currentData?.pressure ?? currentData?.atmospheric_pressure ?? null,
+          rain: currentData?.rain ?? currentData?.precipitation ?? currentData?.rain_today ?? null,
           timestamp: Date.now(),
           visible: true
         };
       }
     }
 
-    // Si está en San Luis pero la estación está caída, se muestra la tarjeta indicando el offline real sin simular datos
+    // Si está en San Luis pero la estación está caída, se muestra indicando el offline real con su respectiva meta-información
     return { 
       temp: null, 
       station: stationName, 
+      stationId: targetStationId,
       distanceKm: Number(minDistance.toFixed(1)), 
-      note: "Estación REM temporalmente fuera de servicio", 
+      note: "Estación REM fuera de servicio o sin datos recientes", 
       timestamp: null, 
       visible: true 
     };
@@ -206,6 +213,7 @@ async function fetchREMObservation(lat, lon) {
     return { 
       temp: null, 
       station: "Red REM San Luis", 
+      stationId: null,
       distanceKm: null, 
       note: "Error de enlace con la infraestructura REM", 
       timestamp: null, 
@@ -350,7 +358,7 @@ function generateInstagramPayload(data) {
 
   let groundTruthText = `• ${data.observation.metar.station || 'Estación Cercana'}: ${data.observation.metar.temp ?? '--'}°C (${data.observation.metar.note || 'Activa'})`;
   if (data.observation.rem && data.observation.rem.temp !== null && data.observation.rem.visible !== false) {
-    groundTruthText = `• ${data.observation.rem.station} (REM San Luis): ${data.observation.rem.temp}°C\n• METAR Cercano: ${data.observation.metar.temp ?? '--'}°C`;
+    groundTruthText = `• ${data.observation.rem.station} (REM ID: ${data.observation.rem.stationId}): ${data.observation.rem.temp}°C\n• METAR Cercano: ${data.observation.metar.temp ?? '--'}°C`;
   }
 
   const body = `
