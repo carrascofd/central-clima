@@ -402,13 +402,41 @@ function calculateAdvancedConsensus(sourcesArray) {
 }
 
 // --- FORMATEADOR INSTAGRAM ---
+// --- TRADUCTOR DE CÓDIGOS WMO (OPEN-METEO) A TEXTO ---
+function translateWmoCode(code) {
+  if (code === 0) return "Despejado ☀️";
+  if ([1, 2, 3].includes(code)) return "Parcialmente nublado ⛅";
+  if ([45, 48].includes(code)) return "Niebla o neblina 🌫️";
+  if ([51, 53, 55].includes(code)) return "Llovizna ligera 🌦️";
+  if ([61, 63, 65].includes(code)) return "Lluvias intermitentes 🌧️";
+  if ([71, 73, 75].includes(code)) return "Probabilidad de nieve ❄️";
+  if ([80, 81, 82].includes(code)) return "Chubascos de lluvia 🌧️";
+  if ([95, 96, 99].includes(code)) return "Tormenta eléctrica ⛈️";
+  return "Tiempo estable 🌤️";
+}
+
+// --- FORMATEADOR INSTAGRAM (CORREGIDO ACUMULADO VS ACTUAL) ---
 function generateInstagramPayload(data) {
   const cleanCityName = data.location.name.replace(/\s+/g, '');
   
+  // 1. Forzar la hora de ejecución del backend al huso de Argentina
+  const currentHour = new Date().toLocaleTimeString('es-AR', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    timeZone: 'America/Argentina/Buenos_Aires' 
+  });
+
+  // 2. Extraer el bloque del pronóstico diario para hoy (Índice 0)
+  const todayForecast = data.daily?.[0] || {};
+  const maxTemp = todayForecast.max != null ? `${todayForecast.max}°C` : '--°C';
+  const minTemp = todayForecast.min != null ? `${todayForecast.min}°C` : '--°C';
+  const dayCondition = translateWmoCode(todayForecast.code);
+
+  // Intros modificados aclarando que es la lectura de la hora actual
   const intros = [
-    `📍 REPORTE DEL CLIMA | ${data.location.name}\n\nEl análisis consolidado de hoy muestra una temperatura de ${data.consensus}°C. Nuestro algoritmo procesó las tendencias principales para darte el dato más preciso del momento.`,
-    `🌍 ACTUALIZACIÓN CLIMÁTICA | ${data.location.name}\n\nPasamos por el colador los principales modelos numéricos y el consenso matemático nos da ${data.consensus}°C para hoy. Te dejamos el desglose técnico de la jornada:`,
-    `📊 CONSENSO DEL TIEMPO | ${data.location.name}\n\n¿Qué dice nuestra optimización hoy? Monitoreamos estaciones físicas y simulaciones para consolidar una temperatura real de ${data.consensus}°C. Así se ven los datos duros:`
+    `📍 CONDICIONES ACTUALES | ${data.location.name}\n\nReporte consolidado de las ${currentHour} hs. Nuestro algoritmo procesó las mediciones actuales fijando una temperatura real de ${data.consensus}°C en este instante. Así se proyecta el resto de la jornada:`,
+    `🌍 ESTADO DEL TIEMPO | ${data.location.name}\n\nLectura en tiempo real (Actualizado a las ${currentHour} hs). El consenso matemático procesó los modelos y estaciones fijando la temperatura actual en ${data.consensus}°C. Te dejamos el panorama para hoy:`,
+    `📊 METEO REPORTE | ${data.location.name}\n\nDatos frescos de las ${currentHour} hs. Pasamos por el colador analítico los sensores meteorológicos: temperatura actual de ${data.consensus}°C. Mirá la proyección del día:`
   ];
 
   const outros = [
@@ -419,19 +447,26 @@ function generateInstagramPayload(data) {
 
   const dayIndex = new Date().getDate();
   const intro = intros[dayIndex % intros.length];
-  const outro = birthdays = outros[dayIndex % outros.length];
+  const outro = outros[dayIndex % outros.length];
 
+  // Configuración dinámica de estaciones reales (REM / METAR)
   let groundTruthText = `• ${data.observation.metar.station || 'Estación Cercana'}: ${data.observation.metar.temp ?? '--'}°C (${data.observation.metar.note || 'Activa'})`;
   if (data.observation.rem && data.observation.rem.temp !== null && data.observation.rem.visible !== false) {
     groundTruthText = `• ${data.observation.rem.station} (REM ID: ${data.observation.rem.stationId}): ${data.observation.rem.temp}°C\n• METAR Cercano: ${data.observation.metar.temp ?? '--'}°C`;
   }
 
+  // Estructura del cuerpo: Primero el pronóstico general, luego el análisis técnico del momento
   const body = `
-🤖 Modelos Numéricos:
-• Promedio de simulaciones: ${data.models.average}°C
+🔮 Pronóstico para hoy:
+• Tendencia general: ${dayCondition}
+• Mínima esperada: ${minTemp}
+• Máxima proyectada: ${maxTemp}
+
+🤖 Modelos de simulación (a las ${currentHour} hs):
+• Promedio de modelos: ${data.models.average}°C
 • Desviación analizada: Confianza ${data.confidence.toUpperCase()}
 
-📡 Verdad Terrestre (Estaciones Reales):
+📡 Verdad Terrestre (Sensores Físicos):
 ${groundTruthText}
 
 🌾 Indicadores de Campo y Salud:
