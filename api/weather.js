@@ -4,6 +4,34 @@ const REM_MAX_DISTANCE_KM = 60;
 
 const cache = new Map();
 
+// --- FUNCIONES AUXILIARES DE PARSEO PROVINCIAL ---
+function parseProvincialJson(text) {
+  if (!text) return null;
+  let cleanText = text.trim();
+  // Maneja el caso si el servidor devuelve la propiedad Datos suelta sin llaves exteriores
+  if (cleanText.startsWith('"Datos"')) {
+    cleanText = `{${cleanText}}`;
+  }
+  try {
+    const obj = JSON.parse(cleanText);
+    if (Array.isArray(obj)) return obj;
+    if (obj && Array.isArray(obj.Datos)) return obj.Datos;
+    return obj;
+  } catch (e) {
+    console.error("Error parseando texto crudo de la REM:", e);
+    return null;
+  }
+}
+
+function parseProvincialFloat(val) {
+  if (val == null) return null;
+  if (typeof val === 'number') return val;
+  // Reemplaza comas decimales por puntos antes de evaluar
+  const clean = String(val).replace(',', '.').trim();
+  const p = parseFloat(clean);
+  return isNaN(p) ? null : p;
+}
+
 function getCacheKey(lat, lon) {
   return `${lat.toFixed(3)},${lon.toFixed(3)}`;
 }
@@ -38,6 +66,7 @@ function metarDistanceKm(obs, lat, lon) {
   return null;
 }
 
+// --- SERVICIOS COMPLEMENTARIOS ---
 async function fetchNearestMetar(lat, lon, apiKey) {
   if (!apiKey) return { temp: null, station: "Sin datos", distanceKm: null, note: "CHECKWX_KEY no configurada", timestamp: null };
   const metarRes = await fetch(`https://api.checkwx.com/v2/metar/lat/${lat}/lon/${lon}/decoded?limit=1`, { headers: { "X-API-Key": apiKey } });
@@ -111,13 +140,13 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
   };
 }
 
+// --- SERVICIO REM CORREGIDO Y BLINDADO ---
 async function fetchREMObservation(lat, lon) {
   const emptyOutside = { temp: null, station: "Red REM San Luis", stationId: null, distanceKm: null, note: "Fuera de rango provincial", timestamp: null, visible: false };
   
   const isSanLuisRegion = lat >= -36.5 && lat <= -31.0 && lon >= -68.5 && lon <= -63.5;
   if (!isSanLuisRegion) return emptyOutside;
 
-  // Cabeceras de simulación para evitar bloqueos de Web Application Firewalls (WAF)
   const spoofHeaders = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
@@ -128,7 +157,7 @@ async function fetchREMObservation(lat, lon) {
   let stationName = "Estación REM";
   let minDistance = Infinity;
 
-  // 1. Intentar obtener el listado dinámico con su propio timeout holgado (6 segundos)
+  // 1. Obtener y parsear listado dinámico de estaciones
   try {
     const listController = new AbortController();
     const listTimeout = setTimeout(() => listController.abort(), 6000);
@@ -141,15 +170,17 @@ async function fetchREMObservation(lat, lon) {
     clearTimeout(listTimeout);
 
     if (stationsRes && stationsRes.ok) {
-      const stations = await stationsRes.json();
+      const rawText = await stationsRes.text();
+      const stations = parseProvincialJson(rawText);
+
       if (Array.isArray(stations)) {
         stations.forEach(st => {
           const id = st.id ?? st.id_estacion ?? st.station_id;
           const name = st.nombre ?? st.name ?? st.estacion;
-          const stLat = parseFloat(st.latitud ?? st.lat ?? st.latitude);
-          const stLon = parseFloat(st.longitud ?? st.lon ?? st.longitude ?? st.lng);
+          const stLat = parseProvincialFloat(st.latitud ?? st.lat ?? st.latitude);
+          const stLon = parseProvincialFloat(st.longitud ?? st.lon ?? st.longitude ?? st.lng);
           
-          if (stLat && stLon && id) {
+          if (stLat !== null && stLon !== null && id) {
             const d = distanceKm(lat, lon, stLat, stLon);
             if (d < minDistance) {
               minDistance = d;
@@ -161,10 +192,10 @@ async function fetchREMObservation(lat, lon) {
       }
     }
   } catch (e) {
-    console.warn("No se pudo mapear dinámicamente el listado REM, usando fallback estático.");
+    console.warn("Fallo en mapeo dinámico REM, recurriendo a fallback estático.");
   }
 
-  // Fallback estático inmediato si el servidor de mapas de la REM falló o dio timeout
+  // Fallback estático inmediato si falló el listado por red o timeout
   if (!targetStationId) {
     const backupStations = [
       { id: "1", name: "Alto Pelado", lat: -34.039, lon: -66.308 },
@@ -187,7 +218,7 @@ async function fetchREMObservation(lat, lon) {
     return emptyOutside;
   }
 
-  // 2. Consultar las métricas de minutos con un nuevo timeout dedicado
+  // 2. Consultar y parsear las métricas de la estación seleccionada
   try {
     const dataController = new AbortController();
     const dataTimeout = setTimeout(() => dataController.abort(), 6000);
@@ -200,31 +231,31 @@ async function fetchREMObservation(lat, lon) {
     clearTimeout(dataTimeout);
 
     if (currentRes && currentRes.ok) {
-      let currentData = await currentRes.json();
+      const rawText = await currentRes.text();
+      const records = parseProvincialJson(rawText);
       
-      if (Array.isArray(currentData)) {
-        currentData = currentData[0] || {};
-      }
+      const currentData = (Array.isArray(records) ? records[0] : records) || {};
 
-      const realRemTemp = currentData.temperatura ?? currentData.Temperatura ?? currentData.temp ?? currentData.temperature;
-      const humidity = currentData.humedad ?? currentData.Humedad ?? currentData.humidity ?? currentData.hum;
-      const windSpeed = currentData.viento_velocidad ?? currentData.Viento_Velocidad ?? currentData.velocidad_viento ?? currentData.wind_speed ?? currentData.wind_speed_kmh;
-      const windDir = currentData.viento_direccion ?? currentData.Viento_Direccion ?? currentData.direccion_viento ?? currentData.wind_direction ?? currentData.wind_dir;
-      const pressure = currentData.presion ?? currentData.Presion ?? currentData.pressure ?? currentData.atmospheric_pressure;
-      const rain = currentData.precipitacion ?? currentData.Precipitacion ?? currentData.lluvia ?? currentData.rain ?? currentData.rain_today;
+      // Mapeo exhaustivo y conversión de comas usando los campos reales observados
+      const realRemTemp = parseProvincialFloat(currentData.temp ?? currentData.temperatura ?? currentData.Temperatura);
+      const humidity = parseProvincialFloat(currentData.hh ?? currentData.humedad ?? currentData.Humedad);
+      const windSpeed = parseProvincialFloat(currentData.vv ?? currentData.viento_velocidad ?? currentData.velocidad_viento);
+      const windDir = currentData.dv ?? currentData.viento_direccion ?? currentData.direccion_viento;
+      const pressure = parseProvincialFloat(currentData.pres ?? currentData.presion ?? currentData.Presion);
+      const rain = parseProvincialFloat(currentData.pp ?? currentData.precipitacion ?? currentData.lluvia);
 
-      if (realRemTemp !== undefined && realRemTemp !== null) {
+      if (realRemTemp !== null) {
         return {
-          temp: parseFloat(realRemTemp),
+          temp: Number(realRemTemp.toFixed(1)),
           station: stationName,
           stationId: targetStationId,
           distanceKm: Number(minDistance.toFixed(1)),
           note: `A ${minDistance.toFixed(1)} km de tu ubicación`,
-          humidity: humidity != null ? Math.round(parseFloat(humidity)) : null,
-          windSpeed: windSpeed != null ? Math.round(parseFloat(windSpeed)) : null,
+          humidity: humidity != null ? Math.round(humidity) : null,
+          windSpeed: windSpeed != null ? Math.round(windSpeed) : null,
           windDir: windDir ? String(windDir).trim() : null,
-          pressure: pressure != null ? Math.round(parseFloat(pressure)) : null,
-          rain: rain != null ? parseFloat(rain) : null,
+          pressure: pressure != null ? Math.round(pressure) : null,
+          rain: rain != null ? Number(rain.toFixed(2)) : null,
           timestamp: Date.now(),
           visible: true
         };
@@ -247,13 +278,14 @@ async function fetchREMObservation(lat, lon) {
       station: stationName, 
       stationId: targetStationId,
       distanceKm: Number(minDistance.toFixed(1)), 
-      note: "Error al leer respuesta del nodo provincial", 
+      note: "Error al interpretar la respuesta del nodo provincial", 
       timestamp: null, 
       visible: true 
     };
   }
 }
 
+// --- ALGORITMO DE CONSENSO AVANZADO ---
 function calculateAdvancedConsensus(sourcesArray) {
   const now = Date.now();
   const MAX_AGE_MS = 5 * 60 * 60 * 1000;
@@ -369,6 +401,7 @@ function calculateAdvancedConsensus(sourcesArray) {
   };
 }
 
+// --- FORMATEADOR INSTAGRAM ---
 function generateInstagramPayload(data) {
   const cleanCityName = data.location.name.replace(/\s+/g, '');
   
@@ -386,7 +419,7 @@ function generateInstagramPayload(data) {
 
   const dayIndex = new Date().getDate();
   const intro = intros[dayIndex % intros.length];
-  const outro = outros[dayIndex % outros.length];
+  const outro = birthdays = outros[dayIndex % outros.length];
 
   let groundTruthText = `• ${data.observation.metar.station || 'Estación Cercana'}: ${data.observation.metar.temp ?? '--'}°C (${data.observation.metar.note || 'Activa'})`;
   if (data.observation.rem && data.observation.rem.temp !== null && data.observation.rem.visible !== false) {
@@ -413,6 +446,7 @@ ${groundTruthText}
   };
 }
 
+// --- HANDLER PRINCIPAL ---
 export default async function handler(req, res) {
   const city = req.query.city;
   const latQuery = req.query.lat;
@@ -462,6 +496,7 @@ export default async function handler(req, res) {
 
     const resolvedCityName = city || owData?.name || "Ubicación actual";
 
+    // Llamada blindada a la REM San Luis
     const remData = await fetchREMObservation(baseLat, baseLon);
 
     const dailyForecast = [];
