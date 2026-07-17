@@ -6,11 +6,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Central de Clima</title>
 
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4380121925502695"
-     crossorigin="anonymous"></script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4380121925502695" crossorigin="anonymous"></script>
 
 <link rel="icon" type="image/png" href="logo_icono.png" />
-
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,15 +17,11 @@
 
 <style>
 * { box-sizing: border-box; }
-
 body {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
+  margin: 0; font-family: 'Inter', sans-serif;
   background: linear-gradient(rgba(6, 11, 25, 0.92), rgba(6, 11, 25, 0.96)), url('https://images.unsplash.com/photo-1501630834273-4b5604d2ee31?q=80&w=1600&auto=format&fit=crop');
   background-size: cover; background-position: center; background-attachment: fixed; color: white;
 }
-
-/* HEADER */
 .header {
   position: sticky; top: 0; z-index: 999; backdrop-filter: blur(18px); background: rgba(8, 15, 30, 0.75);
   border-bottom: 1px solid rgba(255, 255, 255, .06); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
@@ -35,7 +29,6 @@ body {
 .logo-container { display: flex; align-items: center; }
 .logo-container img { height: 140px; width: auto; object-fit: contain; max-width: 100%; }
 
-/* SEARCH */
 .search-wrapper { width: 100%; max-width: 450px; position: relative; }
 .search-box {
   display: flex; align-items: center; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.08);
@@ -44,11 +37,9 @@ body {
 .search-box:focus-within { border-color: #60a5fa; box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15); }
 .search-icon { padding-left: 18px; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
 .search-box input { width: 100%; background: transparent; border: none; outline: none; color: white; font-size: 16px; padding: 14px 14px; }
-.search-box input::placeholder { color: rgba(255, 255, 255, 0.55); }
 .search-btn { border: none; background: #3b82f6; color: white; padding: 14px 20px; cursor: pointer; font-size: 15px; font-weight: 600; transition: 0.2s; }
 .search-btn:hover { background: #2563eb; }
 
-/* AUTOCOMPLETE */
 .autocomplete {
   position: absolute; top: 60px; left: 0; right: 0; background: rgba(18, 25, 42, 0.98); border-radius: 18px;
   overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); backdrop-filter: blur(18px); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: none; z-index: 1000;
@@ -58,27 +49,36 @@ body {
 .autocomplete-name { font-size: 16px; font-weight: 600; }
 .autocomplete-detail { margin-top: 4px; color: #9fb0c7; font-size: 13px; }
 
-/* CONTENT & CARDS */
 .container { max-width: 1250px; margin: auto; padding: 24px; }
 .main-card {
   background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 26px;
   padding: 28px; backdrop-filter: blur(14px); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); margin-bottom: 24px;
 }
 .temp-main { font-size: 74px; font-weight: 700; margin: 0; }
-.confidence { margin-top: 8px; color: #9cc6ff; font-size: 18px; }
-.temp-row { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.confidence { margin-top: 8px; color: #9cc6ff; font-size: 18px; margin-bottom: 20px; }
+.temp-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 20px; }
 .location-main { font-size: 32px; font-weight: 600; color: #bcd3ee; }
 
-/* GRIDS */
-.forecast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 24px; }
+.consensus-dashboard {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 24px;
+}
+.dashboard-item {
+  background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 12px;
+}
+.dashboard-item i { color: #60a5fa; }
+.dashboard-label { font-size: 12px; color: #9fb0c7; text-transform: uppercase; letter-spacing: 0.5px; }
+.dashboard-value { font-size: 18px; font-weight: 600; margin-top: 2px; }
+
+.forecast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; margin-bottom: 24px; }
 .forecast-card {
   background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 22px;
   padding: 20px; text-align: center; backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
-.forecast-date { font-size: 16px; font-weight: 600; color: #9cc6ff; margin-bottom: 12px; }
-.forecast-icon { margin: 14px 0; color: #fdba74; display: flex; justify-content: center; }
-.forecast-temps { font-size: 20px; font-weight: 700; }
-.forecast-temps .min { color: #9fb0c7; font-weight: 400; font-size: 15px; margin-left: 8px; }
+.forecast-date { font-size: 16px; font-weight: 600; color: #9cc6ff; margin-bottom: 8px; }
+.forecast-icon { margin: 12px 0; color: #fdba74; display: flex; justify-content: center; }
+.forecast-temps { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+.forecast-temps .min { color: #9fb0c7; font-weight: 400; font-size: 16px; margin-left: 8px; }
+.forecast-extra { font-size: 12px; color: #cbd5e1; text-align: left; background: rgba(0,0,0,0.15); padding: 10px 14px; border-radius: 12px; margin-top: 10px; line-height: 1.6; }
 
 .grid { display: grid; grid-template-columns: 1.4fr 0.9fr; gap: 24px; margin-bottom: 24px; }
 .info-box { background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 24px; padding: 26px; min-height: 260px; }
@@ -93,7 +93,7 @@ body {
 .api-card {
   background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 22px;
   padding: 22px; backdrop-filter: blur(12px); transition: 0.2s; position: relative;
-  display: flex; flex-direction: column; min-height: 240px;
+  display: flex; flex-direction: column; min-height: 250px;
 }
 .api-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); }
 .api-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
@@ -101,7 +101,6 @@ body {
 .api-detail { color: #c0d4ea; margin-bottom: 6px; font-size: 14px; line-height: 1.4; }
 .ok { color: #22c55e; margin-bottom: 14px; }
 
-/* BADGES EXCLUSIVOS */
 .badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
 .badge-status { display: flex; align-items: center; gap: 4px; margin-top: auto; align-self: flex-start; }
 .badge-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
@@ -109,14 +108,35 @@ body {
 .badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
 .badge-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
 
-/* LEYENDA Y FOOTER */
-.legend-footer {
-  margin-top: 40px; padding: 20px; background: rgba(18, 25, 42, 0.6); border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05); text-align: left; color: #9fb0c7; font-size: 13px; line-height: 1.6;
+/* SECCIÓN DE REDES SOCIALES PREMIUM */
+.contact-footer {
+  text-align: center; margin-top: 36px; font-size: 15px; color: #bcd3ee; 
+  display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap; 
+  background: rgba(18, 25, 42, 0.7); padding: 18px 24px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.06);
 }
-.copyright-footer {
-  text-align: center; color: rgba(255, 255, 255, 0.4); font-size: 13px; margin-top: 30px; letter-spacing: 0.5px;
+.contact-footer span { font-weight: 600; color: white; margin-right: 4px; }
+.contact-link {
+  text-decoration: none; display: inline-flex; align-items: center; gap: 10px; font-weight: 600; 
+  padding: 10px 18px; border-radius: 14px; transition: all 0.2s ease; font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+.contact-link.fb { 
+  background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); 
+}
+.contact-link.fb:hover { 
+  background: #3b82f6; color: white; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+}
+.contact-link.ig { 
+  background: rgba(236, 72, 153, 0.1); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.2); 
+}
+.contact-link.ig:hover { 
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); 
+  color: white; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(236, 72, 153, 0.3);
+}
+.contact-link svg { display: block; }
+
+.legend-footer { margin-top: 24px; padding: 20px; background: rgba(18, 25, 42, 0.6); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.05); color: #9fb0c7; font-size: 13px; line-height: 1.6; }
+.copyright-footer { text-align: center; color: rgba(255, 255, 255, 0.4); font-size: 13px; margin-top: 24px; letter-spacing: 0.5px; }
 
 @media(max-width:900px) {
   .header { flex-direction: column; align-items: flex-start; }
@@ -135,12 +155,9 @@ body {
   <div class="logo-container">
     <img class="logo" src="logo.png" alt="Central de Clima">
   </div>
-
   <div class="search-wrapper">
     <div class="search-box">
-      <div class="search-icon">
-        <i data-lucide="search" style="width: 18px; height: 18px;"></i>
-      </div>
+      <div class="search-icon"><i data-lucide="search" style="width: 18px; height: 18px;"></i></div>
       <input id="city" placeholder="Buscar ciudad o ubicación..." autocomplete="off" />
       <button class="search-btn" onclick="buscarManual()">Consultar</button>
     </div>
@@ -157,18 +174,17 @@ body {
     </div>
     <div id="confidence" class="confidence">Consenso Analítico: Ponderando fuentes</div>
     
+    <div class="consensus-dashboard" id="consensus-dashboard"></div>
+
     <div style="width: 100%; height: 90px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; margin-top: 30px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4); font-size: 14px;">
       Espacio reservado para AdSense (728x90)
     </div>
   </div>
 
-  <h2 class="section-title">📅 Pronóstico por Día</h2>
+  <h2 class="section-title">📅 Pronóstico Extendido</h2>
   <div class="forecast-grid" id="forecast"></div>
 
-  <h2 class="section-title">
-    <i data-lucide="heart-pulse" style="width: 26px; height: 26px; color: #f43f5e;"></i> 
-    Salud, Agro y Calidad del Aire
-  </h2>
+  <h2 class="section-title"><i data-lucide="heart-pulse" style="width: 26px; height: 26px; color: #f43f5e;"></i> Salud, Agro y Calidad del Aire</h2>
   <div class="api-grid premium-grid" id="premium-grid"></div>
 
   <div class="grid" style="margin-top: 24px;">
@@ -177,75 +193,63 @@ body {
       <div id="sources" class="info-line"></div>
       <div style="margin-top: 20px; font-size: 14px; color: #9fb0c7; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
         <i data-lucide="info" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px; color: #60a5fa;"></i>
-        <strong>Sobre el Radar de Precipitaciones:</strong> Está superpuesto en el mapa de la derecha. 
-        Si lo ves completamente transparente, significa que <strong>no hay lluvias</strong> detectadas en este momento. Aleja el mapa para buscar tormentas.
+        <strong>Sobre el Radar de Precipitaciones:</strong> Está superpuesto en el mapa de la derecha. Si lo ves transparente significa que no hay lluvias en este momento.
       </div>
     </div>
     <div id="map"></div>
   </div>
 
-  <h2 class="section-title">
-    <i data-lucide="cpu" style="width: 26px; height: 26px; color: #60a5fa;"></i> 
-    Modelos de Pronóstico
-  </h2>
+  <h2 class="section-title"><i data-lucide="cpu" style="width: 26px; height: 26px; color: #60a5fa;"></i> Modelos de Pronóstico</h2>
   <div class="api-grid" id="models-grid"></div>
 
-  <h2 class="section-title">
-    <i data-lucide="satellite" style="width: 26px; height: 26px; color: #b8dc61;"></i> 
-    Observaciones en Tiempo Real
-  </h2>
+  <h2 class="section-title"><i data-lucide="satellite" style="width: 26px; height: 26px; color: #b8dc61;"></i> Observaciones en Tiempo Real</h2>
   <div class="api-grid obs-grid" id="obs-grid"></div>
+
+  <!-- BLOQUE DE REDES SOCIALES OPTIMIZADO CON ICONOS VECTORIALES INTEGRADOS -->
+  <div class="contact-footer">
+    <span>Síguenos en:</span>
+    <a href="https://www.facebook.com/CentralDeClimaFB" target="_blank" class="contact-link fb">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+      Facebook
+    </a>
+    <a href="https://www.instagram.com/centraldeclima" target="_blank" class="contact-link ig">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+      @centraldeclima
+    </a>
+  </div>
 
   <div class="legend-footer">
     <div style="text-align: center; margin-bottom: 12px; font-size: 14px;"><strong>Leyenda de Consolidación de Datos:</strong></div>
-    <span class="badge badge-green"><i data-lucide="check-circle" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:2px;"></i> Ponderado</span> La fuente aportó datos precisos y fiables que fueron utilizados para el cálculo ponderado de la temperatura actual.<br><br>
-    <span class="badge badge-red"><i data-lucide="x-circle" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:2px;"></i> Excluido</span> La fuente fue rechazada temporalmente del cálculo principal por presentar una anomalía térmica (>2°C de desviación de la mediana), falta de datos o por estar demasiado lejos de la ubicación. Sus datos extra siguen disponibles.
+    <span class="badge badge-green"><i data-lucide="check-circle" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:2px;"></i> Ponderado</span> La fuente aportó datos precisos utilizados para el cálculo consolidado del ecosistema meteorológico local.<br><br>
+    <span class="badge badge-red"><i data-lucide="x-circle" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:2px;"></i> Excluido</span> La fuente fue rechazada temporalmente por presentar una anomalía térmica o estar fuera de rango.
   </div>
 
-  <div class="copyright-footer">
-    &copy;2026 - FDC Apps & Webs
-  </div>
-
+  <div class="copyright-footer">&copy;2026 - FDC Apps & Webs</div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-let map;
-let marker;
-let radarLayer;
-
-let selectedLat = null;
-let selectedLon = null;
-let selectedLocationName = "";
+let map, marker, radarLayer;
+let selectedLat = null, selectedLon = null, selectedLocationName = "";
 
 function initMap(lat, lon, owmKey) {
   if (!map) {
     map = L.map("map").setView([lat, lon], 10);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap"
-    }).addTo(map);
-  } else {
-    map.setView([lat, lon], 10);
-  }
-
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(map);
+  } else { map.setView([lat, lon], 10); }
   if(marker) map.removeLayer(marker);
   marker = L.marker([lat, lon]).addTo(map);
-
   if (owmKey && owmKey !== "undefined") {
     if(radarLayer) map.removeLayer(radarLayer);
-    radarLayer = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmKey}`, {
-      opacity: 1.0,
-      attribution: 'Radar © OpenWeatherMap'
-    }).addTo(map);
+    radarLayer = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${owmKey}`, { opacity: 1.0, attribution: 'Radar © OpenWeatherMap' }).addTo(map);
   }
 }
 
 window.onload = () => {
+  if (window.lucide) lucide.createIcons(); // Forzar renderizado inicial de los íconos estáticos
   if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(pos => {
-      cargar(pos.coords.latitude, pos.coords.longitude);
-    });
+    navigator.geolocation.getCurrentPosition(pos => { cargar(pos.coords.latitude, pos.coords.longitude); });
   }
 };
 
@@ -262,11 +266,8 @@ function getWeatherIcon(descOrCode) {
   }
   const d = String(descOrCode).toLowerCase();
   if (d.includes("clear") || d.includes("sol") || d.includes("despejado")) return "sun";
-  if (d.includes("storm") || d.includes("tormenta") || d.includes("rayos")) return "cloud-lightning";
-  if (d.includes("rain") || d.includes("lluvia") || d.includes("llovizna") || d.includes("drizzle")) return "cloud-rain";
-  if (d.includes("snow") || d.includes("nieve")) return "snowflake";
-  if (d.includes("fog") || d.includes("niebla")) return "cloud-fog";
-  if (d.includes("cloud") || d.includes("nube") || d.includes("nublado")) return "cloud";
+  if (d.includes("storm") || d.includes("tormenta")) return "cloud-lightning";
+  if (d.includes("rain") || d.includes("lluvia") || d.includes("llovizna")) return "cloud-rain";
   return "cloud-sun";
 }
 
@@ -281,14 +282,13 @@ function getUVBadge(uv) {
   if (uv == null) return `<span class="badge badge-green">N/A</span>`;
   if (uv <= 2) return `<span class="badge badge-green">Bajo</span>`;
   if (uv <= 5) return `<span class="badge badge-yellow">Medio</span>`;
-  if (uv <= 7) return `<span class="badge badge-red">Alto</span>`;
-  return `<span class="badge badge-purple">Extremo</span>`;
+  return `<span class="badge badge-red">Alto</span>`;
 }
 
 function getConsensusStatusBadge(isUsed, temp) {
-  if (temp == null) return `<span class="badge badge-status badge-red" title="Sin datos">Sin Datos</span>`;
-  if (isUsed) return `<span class="badge badge-status badge-green" title="Usado para calcular el consenso"><i data-lucide="check-circle" style="width:14px; height:14px;"></i> Ponderado</span>`;
-  return `<span class="badge badge-status badge-red" title="Excluido por desviación extrema o fuera de rango"><i data-lucide="x-circle" style="width:14px; height:14px;"></i> Excluido</span>`;
+  if (temp == null) return `<span class="badge badge-status badge-red">Sin Datos</span>`;
+  if (isUsed) return `<span class="badge badge-status badge-green"><i data-lucide="check-circle" style="width:14px; height:14px;"></i> Ponderado</span>`;
+  return `<span class="badge badge-status badge-red"><i data-lucide="x-circle" style="width:14px; height:14px;"></i> Excluido</span>`;
 }
 
 const cityInput = document.getElementById("city");
@@ -304,30 +304,26 @@ cityInput.addEventListener("input", async (e) => {
     autocomplete.innerHTML = "";
     data.features.forEach(item => {
       const p = item.properties;
-      const name = p.name || "", city = p.city || "", state = p.state || "", country = p.country || "";
       const div = document.createElement("div");
       div.className = "autocomplete-item";
-      div.innerHTML = `<div class="autocomplete-name">${name}</div><div class="autocomplete-detail">${city} ${state ? state + ", " : ""}${country}</div>`;
+      div.innerHTML = `<div class="autocomplete-name">${p.name || ""}</div><div class="autocomplete-detail">${p.city || ""} ${p.state ? p.state + ", " : ""}${p.country || ""}</div>`;
       div.onclick = () => {
-        cityInput.value = `${name}${city ? ", " + city : ""}, ${country}`;
+        cityInput.value = `${p.name || ""}${p.city ? ", " + p.city : ""}`;
         selectedLat = item.geometry.coordinates[1]; selectedLon = item.geometry.coordinates[0];
-        selectedLocationName = `${name}${state ? ", " + state : ""}${country ? ", " + country : ""}`;
+        selectedLocationName = `${p.name || ""}${p.state ? ", " + p.state : ""}`;
         autocomplete.style.display = "none";
         cargar(selectedLat, selectedLon);
       };
       autocomplete.appendChild(div);
     });
     autocomplete.style.display = data.features.length ? "block" : "none";
-  } catch (e) { console.error("Error en autocompletado:", e); }
+  } catch (e) { console.error(e); }
 });
-
-document.addEventListener("click", (e) => { if (!autocomplete.contains(e.target) && e.target !== cityInput) autocomplete.style.display = "none"; });
 
 function buscarManual() {
   if (selectedLat != null && selectedLon != null) { cargar(selectedLat, selectedLon); return; }
   const city = cityInput.value.trim();
   if (!city) return;
-  selectedLocationName = "";
   fetch(`/api/weather?city=${encodeURIComponent(city)}`).then(r => r.json()).then(data => { render(data); });
 }
 
@@ -337,7 +333,6 @@ function cargar(lat, lon) {
 
 function render(data) {
   initMap(data.location.lat, data.location.lon, data.extra?.owmKey);
-
   const mainDesc = data.models.sources.openweather?.desc || "";
   
   document.getElementById("temp").innerHTML = data.consensus != null 
@@ -345,43 +340,72 @@ function render(data) {
       : "-- &deg;C";
 
   document.getElementById("confidence").innerHTML = `Confiabilidad del algoritmo: <strong style="color: #4ade80;">${data.confidence.toUpperCase()}</strong>`;
-  
-  const includedModelsCount = Object.values(data.models.sources).filter(s => s.usedInConsensus).length;
-  const totalModelsCount = Object.values(data.models.sources).filter(s => s.temp != null).length;
-  
-  const totalSourcesCount = includedModelsCount + 
-    (data.observation.metar.usedInConsensus ? 1 : 0) + 
-    (data.extra.meteostat.usedInConsensus ? 1 : 0) +
-    (data.observation.rem?.usedInConsensus ? 1 : 0);
-
-  document.getElementById("avg").innerHTML = `Promedio estricto de modelos: <strong>${data.models.average ?? "-"} &deg;C</strong> <span style="font-size: 14px; color:#9fb0c7;">(evaluando ${totalModelsCount} modelos)</span>`;
-  document.getElementById("sources").innerHTML = `Consenso general: <strong>${totalSourcesCount} fuentes integradas</strong> al promedio`;
-  
   document.getElementById("locationName").innerText = selectedLocationName || data.location?.name || "Ubicación desconocida";
 
-  // PREMIUM DATA
-  const pContainer = document.getElementById("premium-grid");
-  const p = data.premium;
-  pContainer.innerHTML = `
-    <div class="api-card">
-      <div class="api-title"><span>Calidad del Aire</span> ${getAQIBadge(p.aqi)}</div>
-      <div class="api-temp" style="font-size: 32px;">${p.aqi ?? "--"} <span style="font-size: 16px; color:#c0d4ea; font-weight: 500;">AQI</span></div>
-      <div class="api-detail"><i data-lucide="wind" style="width: 14px; height: 14px; vertical-align: middle;"></i> PM10: ${p.pm10 ?? "--"} µg/m³</div>
+  const cf = data.consensus_fields;
+  document.getElementById("consensus-dashboard").innerHTML = `
+    <div class="dashboard-item">
+      <i data-lucide="droplet"></i>
+      <div>
+        <div class="dashboard-label">Humedad</div>
+        <div class="dashboard-value">${cf.humidity ?? '--'}%</div>
+      </div>
     </div>
-    <div class="api-card">
-      <div class="api-title"><span>Índice UV Solar</span> ${getUVBadge(p.uv)}</div>
-      <div class="api-temp" style="font-size: 32px;">${p.uv ?? "--"} <span style="font-size: 16px; color:#c0d4ea; font-weight: 500;">Máx. Hoy</span></div>
-      <div class="api-detail"><i data-lucide="sun" style="width: 14px; height: 14px; vertical-align: middle;"></i> Evitar sol directo de 10h a 16h</div>
+    <div class="dashboard-item">
+      <i data-lucide="wind"></i>
+      <div>
+        <div class="dashboard-label">Viento</div>
+        <div class="dashboard-value">${cf.windSpeed ?? '--'} km/h <span style="font-size:12px; color:#9fb0c7;">(${cf.windDir})</span></div>
+      </div>
     </div>
-    <div class="api-card">
-      <div class="api-title"><span>Datos Agrometeorológicos</span> <i data-lucide="sprout" style="width: 20px; height: 20px; color: #4ade80;"></i></div>
-      <div class="api-detail" style="font-size: 16px; margin-bottom: 12px; color: white;">Prob. de Lluvia: <strong style="color: #60a5fa;">${p.rainProb ?? 0}%</strong></div>
-      <div class="api-detail" style="font-size: 16px; margin-bottom: 12px; color: white;">Humedad de Sup.: <strong>${p.agro.humidity ?? "--"}%</strong></div>
-      <div class="api-detail" style="font-size: 16px; color: white;">Riesgo Heladas: <strong style="color: ${p.agro.frost === 'Alta' ? '#f87171' : '#4ade80'};">${p.agro.frost}</strong></div>
+    <div class="dashboard-item">
+      <i data-lucide="gauge"></i>
+      <div>
+        <div class="dashboard-label">Presión</div>
+        <div class="dashboard-value">${cf.pressure ?? '--'} hPa</div>
+      </div>
+    </div>
+    <div class="dashboard-item">
+      <i data-lucide="eye"></i>
+      <div>
+        <div class="dashboard-label">Visibilidad</div>
+        <div class="dashboard-value">${cf.visibility ?? '--'} km</div>
+      </div>
+    </div>
+    <div class="dashboard-item">
+      <i data-lucide="cloud-rain"></i>
+      <div>
+        <div class="dashboard-label">Precipitación</div>
+        <div class="dashboard-value">${cf.precipitation ?? '0'} mm</div>
+      </div>
     </div>
   `;
 
-  // PRONÓSTICO EXTENDIDO
+  const includedModelsCount = Object.values(data.models.sources).filter(s => s.usedInConsensus).length;
+  const totalModelsCount = Object.values(data.models.sources).filter(s => s.temp != null).length;
+  const totalSourcesCount = includedModelsCount + (data.observation.metar.usedInConsensus ? 1 : 0) + (data.extra.meteostat.usedInConsensus ? 1 : 0) + (data.observation.rem?.usedInConsensus ? 1 : 0);
+
+  document.getElementById("avg").innerHTML = `Promedio estricto de modelos: <strong>${data.models.average ?? "-"} &deg;C</strong> <span style="font-size: 14px; color:#9fb0c7;">(evaluando ${totalModelsCount} modelos)</span>`;
+  document.getElementById("sources").innerHTML = `Consenso general: <strong>${totalSourcesCount} fuentes integradas</strong> al promedio`;
+
+  document.getElementById("premium-grid").innerHTML = `
+    <div class="api-card">
+      <div class="api-title"><span>Calidad del Aire</span> ${getAQIBadge(data.premium.aqi)}</div>
+      <div class="api-temp" style="font-size: 32px;">${data.premium.aqi ?? "--"} <span style="font-size: 16px; color:#c0d4ea;">AQI</span></div>
+      <div class="api-detail"><i data-lucide="wind" style="width: 14px; height: 14px; vertical-align: middle;"></i> PM10: ${data.premium.pm10 ?? "--"} µg/m³</div>
+    </div>
+    <div class="api-card">
+      <div class="api-title"><span>Índice UV Solar</span> ${getUVBadge(data.premium.uv)}</div>
+      <div class="api-temp" style="font-size: 32px;">${data.premium.uv ?? "--"} <span style="font-size: 16px; color:#c0d4ea;">Máx. Hoy</span></div>
+    </div>
+    <div class="api-card">
+      <div class="api-title"><span>Datos Agrometeorológicos</span> <i data-lucide="sprout" style="width: 20px; height: 20px; color: #4ade80;"></i></div>
+      <div class="api-detail" style="font-size: 15px; color: white;">Prob. de Lluvia: <strong style="color: #60a5fa;">${data.premium.rainProb ?? 0}%</strong></div>
+      <div class="api-detail" style="font-size: 15px; color: white;">Humedad de Sup.: <strong>${data.premium.agro.humidity ?? "--"}%</strong></div>
+      <div class="api-detail" style="font-size: 15px; color: white;">Riesgo Heladas: <strong style="color: ${data.premium.agro.frost === 'Alta' ? '#f87171' : '#4ade80'};">${data.premium.agro.frost}</strong></div>
+    </div>
+  `;
+
   const forecastContainer = document.getElementById("forecast");
   if (data.daily && data.daily.length) {
     forecastContainer.innerHTML = "";
@@ -393,12 +417,15 @@ function render(data) {
           <div class="forecast-date">${formattedDate}</div>
           <div class="forecast-icon"><i data-lucide="${getWeatherIcon(day.code)}" style="width: 38px; height: 38px;"></i></div>
           <div class="forecast-temps"><span style="color: #ef4444;">${day.max ?? "-"}°</span><span class="min">${day.min ?? "-"}°</span></div>
+          <div class="forecast-extra">
+            💧 Prob. Lluvia: <strong>${day.rainProb}%</strong><br>
+            💨 Ráfagas Máx: <strong>${day.windMax ?? '--'} km/h</strong> <span style="color: #cbd5e1; font-weight: 600;">(${day.windDir ?? 'N/A'})</span>
+          </div>
         </div>
       `;
     });
   }
 
-  // MODELOS
   const modelsContainer = document.getElementById("models-grid");
   modelsContainer.innerHTML = "";
   const names = { openweather: "OpenWeather", openmeteo: "Open-Meteo", metno: "MET Norway" };
@@ -409,64 +436,58 @@ function render(data) {
         <div class="api-title"><span>${names[key]}</span><i data-lucide="${getWeatherIcon(s.desc || key)}" style="width: 20px; height: 20px; color: #9cc6ff;"></i></div>
         <div class="api-temp">${s.temp ?? "-"} &deg;C</div>
         <div class="api-detail">Humedad: ${s.humidity ?? "-"}%</div>
-        <div class="api-detail">Viento: ${s.wind ?? "-"} m/s</div>
+        <div class="api-detail">Viento: ${s.windSpeed ?? "-"} km/h</div>
+        <div class="api-detail">Presión: ${s.pressure ?? "-"} hPa</div>
         <div class="api-detail ok">${s.desc ?? ""}</div>
         ${getConsensusStatusBadge(s.usedInConsensus, s.temp)}
       </div>
     `;
   }
 
-  // OBSERVACIONES REALES
   const obsContainer = document.getElementById("obs-grid");
   const rem = data.observation.rem;
-
   let remCardHtml = "";
   if (rem && rem.visible !== false) {
     let remFieldsHtml = "";
-    
     if (rem.temp !== null) {
-      if (rem.humidity !== null) {
-        remFieldsHtml += `<div class="api-detail"><i data-lucide="droplet" style="width: 13px; height: 13px; vertical-align: middle; margin-right: 5px; color:#38bdf8;"></i>Humedad: ${rem.humidity}%</div>`;
-      }
-      if (rem.windSpeed !== null) {
-        const dirStr = rem.windDir ? ` (${rem.windDir})` : "";
-        remFieldsHtml += `<div class="api-detail"><i data-lucide="wind" style="width: 13px; height: 13px; vertical-align: middle; margin-right: 5px; color:#cbd5e1;"></i>Viento: ${rem.windSpeed} km/h${dirStr}</div>`;
-      }
-      if (rem.pressure !== null) {
-        remFieldsHtml += `<div class="api-detail"><i data-lucide="gauge" style="width: 13px; height: 13px; vertical-align: middle; margin-right: 5px; color:#a78bfa;"></i>Presión: ${rem.pressure} hPa</div>`;
-      }
-      if (rem.rain !== null) {
-        remFieldsHtml += `<div class="api-detail"><i data-lucide="cloud-rain" style="width: 13px; height: 13px; vertical-align: middle; margin-right: 5px; color:#60a5fa;"></i>Precipitación: ${rem.rain} mm</div>`;
-      }
+      if (rem.humidity !== null) remFieldsHtml += `<div class="api-detail"><i data-lucide="droplet" style="width: 13px; height: 13px; display:inline-block; vertical-align:middle; margin-right:5px; color:#38bdf8;"></i>Humedad: ${rem.humidity}%</div>`;
+      if (rem.windSpeed !== null) remFieldsHtml += `<div class="api-detail"><i data-lucide="wind" style="width: 13px; height: 13px; display:inline-block; vertical-align:middle; margin-right:5px; color:#cbd5e1;"></i>Viento: ${rem.windSpeed} km/h (${rem.windDir ?? ''})</div>`;
+      if (rem.pressure !== null) remFieldsHtml += `<div class="api-detail"><i data-lucide="gauge" style="width: 13px; height: 13px; display:inline-block; vertical-align:middle; margin-right:5px; color:#a78bfa;"></i>Presión: ${rem.pressure} hPa</div>`;
+      if (rem.rain !== null) remFieldsHtml += `<div class="api-detail"><i data-lucide="cloud-rain" style="width: 13px; height: 13px; display:inline-block; vertical-align:middle; margin-right:5px; color:#60a5fa;"></i>Precipitación: ${rem.rain} mm</div>`;
     }
-
     remCardHtml = `
       <div class="api-card">
         <div class="api-title"><span>Red REM San Luis</span><i data-lucide="shield-check" style="width: 20px; height: 20px; color: #4ade80;"></i></div>
         <div class="api-temp">${rem.temp !== null ? rem.temp + ' &deg;C' : '- &deg;C'}</div>
-        <div class="api-detail" style="color: #60a5fa; font-weight: 600; font-size: 14px; margin-bottom: 2px;">Estación: ${rem.station}</div>
-        <div class="api-detail" style="color: #93c5fd; font-size: 12px; margin-bottom: 8px;">ID REM: ${rem.stationId || 'No disponible'}</div>
-        <div class="api-detail" style="font-size: 13px; margin-bottom: 10px; opacity: 0.8;">${rem.note || ""}</div>
+        <div class="api-detail" style="color: #60a5fa; font-weight:600;">Estación: ${rem.station}</div>
+        <div class="api-detail" style="font-size:12px; opacity:0.8; margin-bottom:10px;">${rem.note || ""}</div>
         ${remFieldsHtml}
         ${getConsensusStatusBadge(rem.usedInConsensus, rem.temp)}
       </div>
     `;
   }
 
+  const metar = data.observation.metar;
   obsContainer.innerHTML = `
     ${remCardHtml}
     <div class="api-card">
       <div class="api-title"><span>Estación METAR</span><i data-lucide="plane" style="width: 20px; height: 20px; color: #b8dc61;"></i></div>
-      <div class="api-temp">${data.observation.metar.temp ?? "-"} &deg;C</div>
-      <div class="api-detail">${data.observation.metar.station || "Sin estación cercana"}</div>
-      <div class="api-detail">${data.observation.metar.note ?? ""}</div>
-      ${getConsensusStatusBadge(data.observation.metar.usedInConsensus, data.observation.metar.temp)}
+      <div class="api-temp">${metar.temp ?? "-"} &deg;C</div>
+      <div class="api-detail" style="font-weight: 600; color: #b8dc61;">${metar.station || "Sin estación cercana"}</div>
+      <div class="api-detail" style="font-size: 12px; opacity: 0.8; margin-bottom: 8px;">${metar.note ?? ""}</div>
+      ${metar.humidity ? `<div class="api-detail">Humedad: ${metar.humidity}%</div>` : ''}
+      ${metar.windSpeed ? `<div class="api-detail">Viento: ${metar.windSpeed} km/h (${metar.windDir ?? ''})</div>` : ''}
+      ${metar.pressure ? `<div class="api-detail">Presión: ${metar.pressure} hPa</div>` : ''}
+      ${metar.visibility ? `<div class="api-detail">Visibilidad: ${metar.visibility} km</div>` : ''}
+      ${getConsensusStatusBadge(metar.usedInConsensus, metar.temp)}
     </div>
     <div class="api-card">
       <div class="api-title"><span>Meteostat</span><i data-lucide="thermometer" style="width: 20px; height: 20px; color: #b8dc61;"></i></div>
       <div class="api-temp">${data.extra.meteostat.temp ?? "-"} &deg;C</div>
-      <div class="api-detail">${data.extra.meteostat.station || "Sin estación cercana"}</div>
-      <div class="api-detail">${data.extra.meteostat.desc}</div>
+      <div class="api-detail" style="font-weight: 600;">${data.extra.meteostat.station || "Sin estación cercana"}</div>
+      <div class="api-detail" style="font-size: 12px; opacity: 0.8; margin-bottom: 8px;">${data.extra.meteostat.desc}</div>
+      ${data.extra.meteostat.humidity ? `<div class="api-detail">Humedad: ${data.extra.meteostat.humidity}%</div>` : ''}
+      ${data.extra.meteostat.windSpeed ? `<div class="api-detail">Viento: ${data.extra.meteostat.windSpeed} km/h</div>` : ''}
       ${getConsensusStatusBadge(data.extra.meteostat.usedInConsensus, data.extra.meteostat.temp)}
     </div>
   `;
@@ -474,6 +495,5 @@ function render(data) {
   if (window.lucide) lucide.createIcons();
 }
 </script>
-
 </body>
 </html>

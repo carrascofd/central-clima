@@ -8,7 +8,6 @@ const cache = new Map();
 function parseProvincialJson(text) {
   if (!text) return null;
   let cleanText = text.trim();
-  // Maneja el caso si el servidor devuelve la propiedad Datos suelta sin llaves exteriores
   if (cleanText.startsWith('"Datos"')) {
     cleanText = `{${cleanText}}`;
   }
@@ -26,7 +25,6 @@ function parseProvincialJson(text) {
 function parseProvincialFloat(val) {
   if (val == null) return null;
   if (typeof val === 'number') return val;
-  // Reemplaza comas decimales por puntos antes de evaluar
   const clean = String(val).replace(',', '.').trim();
   const p = parseFloat(clean);
   return isNaN(p) ? null : p;
@@ -66,14 +64,23 @@ function metarDistanceKm(obs, lat, lon) {
   return null;
 }
 
+function degToCard(deg) {
+  if (deg == null) return "N/A";
+  const angles = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
+  const index = Math.round(deg / 45) % 8;
+  return angles[index];
+}
+
 // --- SERVICIOS COMPLEMENTARIOS ---
 async function fetchNearestMetar(lat, lon, apiKey) {
-  if (!apiKey) return { temp: null, station: "Sin datos", distanceKm: null, note: "CHECKWX_KEY no configurada", timestamp: null };
+  const defaultObj = { temp: null, humidity: null, windSpeed: null, windDir: null, pressure: null, visibility: null, station: "Sin datos", distanceKm: null, note: "CHECKWX_KEY no configurada", timestamp: null };
+  if (!apiKey) return defaultObj;
+  
   const metarRes = await fetch(`https://api.checkwx.com/v2/metar/lat/${lat}/lon/${lon}/decoded?limit=1`, { headers: { "X-API-Key": apiKey } });
-  if (!metarRes.ok) return { temp: null, station: "METAR sin datos", distanceKm: null, note: null, timestamp: null };
+  if (!metarRes.ok) return { ...defaultObj, station: "METAR sin datos", note: null };
   const metarData = await metarRes.json();
   const obs = metarData?.data?.[0];
-  if (!obs) return { temp: null, station: "METAR sin datos", distanceKm: null, note: null, timestamp: null };
+  if (!obs) return { ...defaultObj, station: "METAR sin datos", note: null };
   
   const distance = metarDistanceKm(obs, lat, lon);
   const stationName = obs.station?.name ?? obs.station?.icao ?? obs.icao ?? "Estación desconocida";
@@ -88,8 +95,22 @@ async function fetchNearestMetar(lat, lon, apiKey) {
     timeDesc = diffH > 0 ? ` (hace ${diffH}h)` : " (reciente)";
   }
 
+  let wSpeed = obs.wind?.speed_kph ?? null;
+  if (wSpeed == null && obs.wind?.speed_kts != null) {
+    wSpeed = obs.wind.speed_kts * 1.852;
+  }
+  let vis = obs.visibility?.meters ? obs.visibility.meters / 1000 : null;
+  if (vis == null && obs.visibility?.miles != null) {
+    vis = obs.visibility.miles * 1.60934;
+  }
+
   return {
     temp: obs.temperature?.celsius ?? null,
+    humidity: obs.humidity?.percent ?? null,
+    windSpeed: wSpeed != null ? Number(wSpeed.toFixed(1)) : null,
+    windDir: obs.wind?.degrees ? degToCard(obs.wind.degrees) : null,
+    pressure: obs.barometer?.hpa ?? null,
+    visibility: vis != null ? Number(vis.toFixed(1)) : null,
     station: stationLabel,
     distanceKm: distance != null ? Number(distance.toFixed(1)) : null,
     note: distance != null ? `A ${Math.round(distance)} km${timeDesc}` : null,
@@ -98,7 +119,7 @@ async function fetchNearestMetar(lat, lon, apiKey) {
 }
 
 async function fetchMeteostatObservation(lat, lon, apiKey) {
-  const empty = { temp: null, station: null, distanceKm: null, desc: "Sin datos", timestamp: null };
+  const empty = { temp: null, humidity: null, windSpeed: null, windDir: null, pressure: null, precipitation: null, station: null, distanceKm: null, desc: "Sin datos", timestamp: null };
   if (!apiKey) return { ...empty, desc: "Meteostat no configurado" };
   const headers = { "x-rapidapi-host": "meteostat.p.rapidapi.com", "x-rapidapi-key": apiKey };
   const nearbyRes = await fetch(`https://meteostat.p.rapidapi.com/stations/nearby?lat=${lat}&lon=${lon}&limit=1`, { headers });
@@ -133,6 +154,11 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
 
   return {
     temp: latest.temp,
+    humidity: latest.rh ?? null,
+    windSpeed: latest.wspd ?? null, 
+    windDir: latest.wdir ? degToCard(latest.wdir) : null,
+    pressure: latest.pres ?? null,
+    precipitation: latest.prcp ?? null,
     station: station.name?.en ?? station.id,
     distanceKm: station.distance != null ? Number((station.distance / 1000).toFixed(1)) : null,
     desc: `Observación activa${timeDesc}`,
@@ -140,7 +166,6 @@ async function fetchMeteostatObservation(lat, lon, apiKey) {
   };
 }
 
-// --- SERVICIO REM CORREGIDO Y BLINDADO ---
 async function fetchREMObservation(lat, lon) {
   const emptyOutside = { temp: null, station: "Red REM San Luis", stationId: null, distanceKm: null, note: "Fuera de rango provincial", timestamp: null, visible: false };
   
@@ -157,7 +182,6 @@ async function fetchREMObservation(lat, lon) {
   let stationName = "Estación REM";
   let minDistance = Infinity;
 
-  // 1. Obtener y parsear listado dinámico de estaciones
   try {
     const listController = new AbortController();
     const listTimeout = setTimeout(() => listController.abort(), 6000);
@@ -192,90 +216,25 @@ async function fetchREMObservation(lat, lon) {
       }
     }
   } catch (e) {
-    console.warn("Fallo en mapeo dinámico REM, recurriendo a fallback estático.");
+    console.warn("Fallo en mapeo dinámico REM, recurriendo a fallback.");
   }
 
-  // Fallback estático inmediato si falló el listado por red o timeout
   if (!targetStationId) {
     const backupStations = [
-      { id: "1", name: "Alto Pelado", lat: -33.83756, lon: -66.13864 },
-      { id: "2", name: "Anchorena", lat: -35.6731, lon: -65.42411 },
-      { id: "3", name: "Bajada Nueva", lat: -35.16846, lon: -66.49468 },
-      { id: "4", name: "Baldecito", lat: -32.34821, lon: -66.20278 },
-      { id: "5", name: "Batavia", lat: -34.77845, lon: -65.68851 },
-      { id: "6", name: "Beazley", lat: -33.75676, lon: -66.64833 },
-      { id: "7", name: "Buena Esperanza", lat: -34.75682, lon: -65.25261 },
-      { id: "8", name: "Concarán", lat: -32.55445, lon: -65.24881 },
-      { id: "9", name: "Desaguadero", lat: -33.40499, lon: -67.1494 },
-      { id: "10", name: "El Amago", lat: -32.72055, lon: -66.1628 },
-      { id: "11", name: "El Durazno", lat: -33.19005, lon: -66.15286 },
-      { id: "12", name: "Fraga", lat: -33.50133, lon: -65.79225 },
-      { id: "13", name: "Justo Daract", lat: -33.85085, lon: -65.17382 },
-      { id: "14", name: "La Angelina", lat: -34.36133, lon: -65.32747 },
-      { id: "15", name: "La Calera", lat: -32.87713, lon: -66.84113 },
-      { id: "16", name: "La Cumbre", lat: -33.34238, lon: -66.12125 },
-      { id: "17", name: "La Esquina", lat: -33.14587, lon: -65.37258 },
-      { id: "18", name: "La Florida", lat: -33.11747, lon: -66.0025 },
-      { id: "19", name: "La Punilla", lat: -33.14373, lon: -65.0837 },
-      { id: "20", name: "La Punta", lat: -33.15642, lon: -66.31473 },
-      { id: "21", name: "La Toma", lat: -33.05243, lon: -65.61933 },
-      { id: "22", name: "La Tranca", lat: -32.33969, lon: -67.2662 },
-      { id: "23", name: "Lafinur", lat: -32.05826, lon: -65.34197 },
-      { id: "26", name: "Martín de Loyola", lat: -35.71217, lon: -66.35322 },
-      { id: "27", name: "Merlo", lat: -32.33348, lon: -65.01432 },
-      { id: "28", name: "Naschel", lat: -32.91946, lon: -65.37194 },
-      { id: "29", name: "Nogolí", lat: -32.9188, lon: -66.32607 },
-      { id: "30", name: "Nueva Galia", lat: -35.11305, lon: -65.25683 },
-      { id: "31", name: "Paso Grande", lat: -32.87672, lon: -65.63421 },
-      { id: "32", name: "San Francisco", lat: -32.60059, lon: -66.12823 },
-      { id: "34", name: "San Martín", lat: -32.41002, lon: -65.67489 },
-      { id: "35", name: "Santa Rosa", lat: -32.34359, lon: -65.20872 },
-      { id: "36", name: "San Miguel", lat: -32.14099, lon: -65.81574 },
-      { id: "37", name: "Tilisarao", lat: -32.73375, lon: -65.29536 },
-      { id: "38", name: "Unión", lat: -35.1546, lon: -65.94489 },
-      { id: "39", name: "Villa de Praga", lat: -32.53259, lon: -65.64681 },
-      { id: "40", name: "Villa Gral. Roca", lat: -32.66487, lon: -66.45049 },
-      { id: "41", name: "Villa Larca", lat: -32.61817, lon: -64.98036 },
-      { id: "42", name: "Villa Mercedes", lat: -33.678586, lon: -65.504645 },
-      { id: "43", name: "Zanjitas", lat: -33.80497, lon: -66.41587 },
-      { id: "44", name: "Navia", lat: -34.77453, lon: -66.5858 },
-      { id: "45", name: "Valle de Pancanta", lat: -32.87029, lon: -66.10596 },
-      { id: "46", name: "San Luis Rural", lat: -33.33604, lon: -66.43529 },
-      { id: "47", name: "El Trapiche", lat: -33.102925, lon: -66.05738056 },
-      { id: "48", name: "Merlo Alto", lat: -32.35308, lon: -64.96828 },
-      { id: "49", name: "Coronel Alzogaray", lat: -33.46051, lon: -65.42903 },
-      { id: "50", name: "La Botija", lat: -32.23766, lon: -66.57863 },
-      { id: "51", name: "Potrero de los Funes", lat: -33.23122, lon: -66.22822 },
-      { id: "52", name: "Soven", lat: -34.17522, lon: -65.33552 },
-      { id: "53", name: "Quebrada de las Higueritas", lat: -32.39472, lon: -65.91894 },
-      { id: "54", name: "Los Coros", lat: -33.63525, lon: -66.51341 },
-      { id: "55", name: "Estancia Grande", lat: -33.19227, lon: -66.13736 },
-      { id: "56", name: "Las Chacras", lat: -33.26172, lon: -66.24302 },
-      { id: "58", name: "Aeropuerto San Luis", lat: -33.275921, lon: -66.353356 },
-      { id: "59", name: "Aeropuerto Valle del Conlara", lat: -32.378914, lon: -65.180141 },
-      { id: "60", name: "Villa Reynolds", lat: -33.725452, lon: -65.385817 },
-      { id: "85", name: "Donovan", lat: -33.337614, lon: -66.232069 },
-      { id: "86", name: "Varela", lat: -34.1225, lon: -66.463889 },
-      { id: "87", name: "La Florida - Dique", lat: -33.1142, lon: -66.0041 },
-      { id: "88", name: "AgroZAL", lat: -33.6450639, lon: -65.3794056 },
-      { id: "89", name: "Filo-Merlo", lat: -32.3775, lon: -64.925833 },
-      { id: "92", name: "Parapente Merlo", lat: -32.368194, lon: -64.937222 }
+      { id: "1", name: "Alto Pelado", lat: -33.83756, lon: -66.13864 }, { id: "2", name: "Anchorena", lat: -35.6731, lon: -65.42411 },
+      { id: "8", name: "Concarán", lat: -32.55445, lon: -65.24881 }, { id: "21", name: "La Toma", lat: -33.05243, lon: -65.61933 },
+      { id: "27", name: "Merlo", lat: -32.33348, lon: -65.01432 }, { id: "42", name: "Villa Mercedes", lat: -33.678586, lon: -65.504645 },
+      { id: "46", name: "San Luis Rural", lat: -33.33604, lon: -66.43529 }, { id: "51", name: "Potrero de los Funes", lat: -33.23122, lon: -66.22822 },
+      { id: "58", name: "Aeropuerto San Luis", lat: -33.275921, lon: -66.353356 }
     ];
     backupStations.forEach(st => {
       const d = distanceKm(lat, lon, st.lat, st.lon);
-      if (d < minDistance) {
-        minDistance = d;
-        targetStationId = st.id;
-        stationName = st.name;
-      }
+      if (d < minDistance) { minDistance = d; targetStationId = st.id; stationName = st.name; }
     });
   }
 
-  if (minDistance > REM_MAX_DISTANCE_KM) {
-    return emptyOutside;
-  }
+  if (minDistance > REM_MAX_DISTANCE_KM) return emptyOutside;
 
-  // 2. Consultar y parsear las métricas de la estación seleccionada
   try {
     const dataController = new AbortController();
     const dataTimeout = setTimeout(() => dataController.abort(), 6000);
@@ -290,10 +249,8 @@ async function fetchREMObservation(lat, lon) {
     if (currentRes && currentRes.ok) {
       const rawText = await currentRes.text();
       const records = parseProvincialJson(rawText);
-      
       const currentData = (Array.isArray(records) ? records[0] : records) || {};
 
-      // Mapeo exhaustivo y conversión de comas usando los campos reales observados
       const realRemTemp = parseProvincialFloat(currentData.temp ?? currentData.temperatura ?? currentData.Temperatura);
       const humidity = parseProvincialFloat(currentData.hh ?? currentData.humedad ?? currentData.Humedad);
       const windSpeed = parseProvincialFloat(currentData.vv ?? currentData.viento_velocidad ?? currentData.velocidad_viento);
@@ -318,27 +275,9 @@ async function fetchREMObservation(lat, lon) {
         };
       }
     }
-
-    return { 
-      temp: null, 
-      station: stationName, 
-      stationId: targetStationId,
-      distanceKm: Number(minDistance.toFixed(1)), 
-      note: "Estación REM en mantenimiento o sin datos recientes", 
-      timestamp: null, 
-      visible: true 
-    };
-
+    return { temp: null, station: stationName, stationId: targetStationId, distanceKm: Number(minDistance.toFixed(1)), note: "Estación sin datos recientes", timestamp: null, visible: true };
   } catch (e) {
-    return { 
-      temp: null, 
-      station: stationName, 
-      stationId: targetStationId,
-      distanceKm: Number(minDistance.toFixed(1)), 
-      note: "Error al interpretar la respuesta del nodo provincial", 
-      timestamp: null, 
-      visible: true 
-    };
+    return { temp: null, station: stationName, stationId: targetStationId, distanceKm: Number(minDistance.toFixed(1)), note: "Error interpretando nodo provincial", timestamp: null, visible: true };
   }
 }
 
@@ -362,7 +301,6 @@ function calculateAdvancedConsensus(sourcesArray) {
   const rem = valid.find(s => s.type === 'rem'); 
   
   let groundTruthAnchor = null;
-
   const tMetar = metar?.temp;
   const tMeteostat = meteostat?.temp;
   const tRem = rem?.temp;
@@ -379,12 +317,7 @@ function calculateAdvancedConsensus(sourcesArray) {
     } else {
       const ageMetar = metar.timestamp ? (now - metar.timestamp) : 0;
       const ageMeteostat = meteostat.timestamp ? (now - meteostat.timestamp) : 0;
-      
-      if (Math.abs(ageMetar - ageMeteostat) > 1.5 * 60 * 60 * 1000) {
-        groundTruthAnchor = ageMetar < ageMeteostat ? tMetar : tMeteostat;
-      } else {
-        groundTruthAnchor = (metar.distanceKm || 0) <= (meteostat.distanceKm || 0) ? tMetar : tMeteostat;
-      }
+      groundTruthAnchor = Math.abs(ageMetar - ageMeteostat) > 1.5 * 60 * 60 * 1000 ? (ageMetar < ageMeteostat ? tMetar : tMeteostat) : ((metar.distanceKm || 0) <= (meteostat.distanceKm || 0) ? tMetar : tMeteostat);
     }
   } else if (tMetar != null && isMetarNear) {
     groundTruthAnchor = tMetar;
@@ -402,13 +335,10 @@ function calculateAdvancedConsensus(sourcesArray) {
   if (groundTruthAnchor !== null) {
     valid.forEach(s => {
       let isAcceptable = false;
-
       if (s.type === 'metar' || s.type === 'meteostat' || s.type === 'rem') {
         const limitDist = s.type === 'rem' ? REM_MAX_DISTANCE_KM : METAR_MAX_DISTANCE_KM;
         if (s.distanceKm == null || s.distanceKm <= limitDist) {
-          if (Math.abs(s.temp - groundTruthAnchor) <= 3.0) {
-            isAcceptable = true; 
-          }
+          if (Math.abs(s.temp - groundTruthAnchor) <= 3.0) isAcceptable = true; 
         }
       } else if (s.type === 'model') {
         isAcceptable = Math.abs(s.temp - groundTruthAnchor) <= MAX_MODEL_DEVIATION_FROM_REAL;
@@ -417,15 +347,9 @@ function calculateAdvancedConsensus(sourcesArray) {
       if (isAcceptable) {
         acceptedIds.push(s.id);
         let weight = 1; 
-
-        if (s.type === 'metar') {
-          const dist = s.distanceKm || 0;
-          weight = Math.max(1.5, 4.0 - (dist / 30));
-        } else if (s.type === 'meteostat') {
-          weight = 2.5;
-        } else if (s.type === 'rem') {
-          weight = 5.0; 
-        }
+        if (s.type === 'metar') weight = Math.max(1.5, 4.0 - ((s.distanceKm || 0) / 30));
+        else if (s.type === 'meteostat') weight = 2.5;
+        else if (s.type === 'rem') weight = 5.0; 
 
         weightedSum += s.temp * weight;
         totalWeight += weight;
@@ -449,17 +373,22 @@ function calculateAdvancedConsensus(sourcesArray) {
     const temps = valid.map(s => s.temp).sort((a, b) => a - b);
     const mid = Math.floor(temps.length / 2);
     const median = temps.length % 2 !== 0 ? temps[mid] : (temps[mid - 1] + temps[mid]) / 2;
-    return { value: median.toFixed(1), acceptedIds: [] };
+    return { value: Number(median.toFixed(1)), acceptedIds: [] };
   }
 
-  return {
-    value: (weightedSum / totalWeight).toFixed(1),
-    acceptedIds: acceptedIds
-  };
+  return { value: Number((weightedSum / totalWeight).toFixed(1)), acceptedIds };
 }
 
-// --- FORMATEADOR INSTAGRAM ---
-// --- TRADUCTOR DE CÓDIGOS WMO (OPEN-METEO) A TEXTO ---
+function calculateSecondaryConsensus(sources, field, acceptedIds, isInteger = false) {
+  const filtered = sources.filter(s => acceptedIds.includes(s.id) && s[field] != null);
+  const targetList = filtered.length > 0 ? filtered : sources.filter(s => s[field] != null);
+  
+  if (targetList.length === 0) return null;
+  const sum = targetList.reduce((acc, curr) => acc + curr[field], 0);
+  const avg = sum / targetList.length;
+  return isInteger ? Math.round(avg) : Number(avg.toFixed(1));
+}
+
 function translateWmoCode(code) {
   if (code === 0) return "Despejado ☀️";
   if ([1, 2, 3].includes(code)) return "Parcialmente nublado ⛅";
@@ -472,70 +401,52 @@ function translateWmoCode(code) {
   return "Tiempo estable 🌤️";
 }
 
-// --- FORMATEADOR INSTAGRAM (CORREGIDO ACUMULADO VS ACTUAL) ---
 function generateInstagramPayload(data) {
   const cleanCityName = data.location.name.replace(/\s+/g, '');
-  
-  // 1. Forzar la hora de ejecución del backend al huso de Argentina
-  const currentHour = new Date().toLocaleTimeString('es-AR', { 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    timeZone: 'America/Argentina/Buenos_Aires' 
-  });
-
-  // 2. Extraer el bloque del pronóstico diario para hoy (Índice 0)
+  const currentHour = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' });
   const todayForecast = data.daily?.[0] || {};
   const maxTemp = todayForecast.max != null ? `${todayForecast.max}°C` : '--°C';
   const minTemp = todayForecast.min != null ? `${todayForecast.min}°C` : '--°C';
   const dayCondition = translateWmoCode(todayForecast.code);
 
-  // Intros modificados aclarando que es la lectura de la hora actual
   const intros = [
-    `📍 CONDICIONES ACTUALES | ${data.location.name}\n\nReporte consolidado de las ${currentHour} hs. Nuestro algoritmo procesó las mediciones actuales fijando una temperatura real de ${data.consensus}°C en este instante. Así se proyecta el resto de la jornada:`,
-    `🌍 ESTADO DEL TIEMPO | ${data.location.name}\n\nLectura en tiempo real (Actualizado a las ${currentHour} hs). El consenso matemático procesó los modelos y estaciones fijando la temperatura actual en ${data.consensus}°C. Te dejamos el panorama para hoy:`,
-    `📊 METEO REPORTE | ${data.location.name}\n\nDatos frescos de las ${currentHour} hs. Pasamos por el colador analítico los sensores meteorológicos: temperatura actual de ${data.consensus}°C. Mirá la proyección del día:`
+    `📍 CONDICIONES ACTUALES | ${data.location.name}\n\nReporte consolidado de las ${currentHour} hs. Nuestro algoritmo procesó las mediciones fijando una temperatura real de ${data.consensus}°C. Proyección general:`,
+    `🌍 ESTADO DEL TIEMPO | ${data.location.name}\n\nLectura en tiempo real (${currentHour} hs). El consenso matemático fijó la temperatura actual en ${data.consensus}°C. Panorama para hoy:`,
+    `📊 METEO REPORTE | ${data.location.name}\n\nDatos frescos de las ${currentHour} hs. Pasamos por el colador analítico los sensores meteorológicos: temperatura actual de ${data.consensus}°C. Mirá la proyección:`
   ];
-
   const outros = [
-    `\n\n💻 Datos procesados en tiempo real por Central de Clima.\n\n#Clima #${cleanCityName} #Meteorologia #Agro #ConsensoClimatico`,
-    `\n\n🚀 Monitoreo continuo automatizado por Central de Clima.\n\n#Tiempo #${cleanCityName} #Agrotecnologia #DataScience #ClimaHoy`,
-    `\n\n🌾 Optimización de datos meteorológicos de precisión.\n\n#Meteorologia #${cleanCityName} #CampoArgentino #SmartFarming #Consenso`
+    `\n\n💻 Procesado en tiempo real por Central de Clima.\n\n#Clima #${cleanCityName} #Meteorologia #ConsensoClimatico`,
+    `\n\n🚀 Monitoreo automatizado por Central de Clima.\n\n#Tiempo #${cleanCityName} #DataScience #ClimaHoy`,
+    `\n\n🌾 Optimización meteorológica de precisión.\n\n#Meteorologia #${cleanCityName} #CampoArgentino #Consenso`
   ];
 
-  const dayIndex = new Date().getDate();
-  const intro = intros[dayIndex % intros.length];
-  const outro = outros[dayIndex % outros.length];
+  const intro = intros[new Date().getDate() % intros.length];
+  const outro = outros[new Date().getDate() % outros.length];
 
-  // Configuración dinámica de estaciones reales (REM / METAR)
-  let groundTruthText = `• ${data.observation.metar.station || 'Estación Cercana'}: ${data.observation.metar.temp ?? '--'}°C (${data.observation.metar.note || 'Activa'})`;
+  let groundTruthText = `• ${data.observation.metar.station || 'Estación Cercana'}: ${data.observation.metar.temp ?? '--'}°C`;
   if (data.observation.rem && data.observation.rem.temp !== null && data.observation.rem.visible !== false) {
-    groundTruthText = `• ${data.observation.rem.station} (REM ID: ${data.observation.rem.stationId}): ${data.observation.rem.temp}°C\n• METAR Cercano: ${data.observation.metar.temp ?? '--'}°C`;
+    groundTruthText = `• ${data.observation.rem.station} (REM): ${data.observation.rem.temp}°C\n• METAR: ${data.observation.metar.temp ?? '--'}°C`;
   }
 
-  // Estructura del cuerpo: Primero el pronóstico general, luego el análisis técnico del momento
   const body = `
 🔮 Pronóstico para hoy:
 • Tendencia general: ${dayCondition}
-• Mínima esperada: ${minTemp}
-• Máxima proyectada: ${maxTemp}
+• Mínima esperada: ${minTemp} | Máxima proyectada: ${maxTemp}
 
-🤖 Modelos de simulación (a las ${currentHour} hs):
-• Promedio de modelos: ${data.models.average}°C
-• Desviación analizada: Confianza ${data.confidence.toUpperCase()}
+🤖 Consenso Consolidado:
+• Viento promedio: ${data.consensus_fields.windSpeed ?? '--'} km/h
+• Humedad ambiente: ${data.consensus_fields.humidity ?? '--'}%
+• Presión barométrica: ${data.consensus_fields.pressure ?? '--'} hPa
 
-📡 Verdad Terrestre (Sensores Físicos):
+📡 Sensores Físicos Integrados:
 ${groundTruthText}
 
-🌾 Indicadores de Campo y Salud:
+🌾 Indicadores Clave:
 • Probabilidad de Precipitaciones: ${data.premium.rainProb ?? 0}%
-• Humedad en Superficie: ${data.premium.agro.humidity ?? '--'}%
 • Riesgo de Heladas: ${data.premium.agro.frost}
 • Índice UV Máximo: ${data.premium.uv ?? '--'}`;
 
-  return {
-    caption: `${intro}\n${body}${outro}`,
-    raw_data: data
-  };
+  return { caption: `${intro}\n${body}${outro}`, raw_data: data };
 }
 
 // --- HANDLER PRINCIPAL ---
@@ -563,22 +474,18 @@ export default async function handler(req, res) {
 
     const cacheKey = getCacheKey(baseLat, baseLon);
     const cached = getCachedResponse(cacheKey);
-    
     if (cached) {
       res.setHeader("X-Cache", "HIT");
-      if (format === 'instagram') {
-        return res.status(200).json(generateInstagramPayload(cached));
-      }
-      return res.status(200).json(cached);
+      return res.status(200).json(format === 'instagram' ? generateInstagramPayload(cached) : cached);
     }
 
     const [owRes, omRes, metRes, aqiRes, metarData, meteostatData] = await Promise.all([
       fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&appid=${OPENWEATHER_KEY}`),
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current=temperature_2m,wind_speed_10m,weather_code,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max,precipitation_probability_max&forecast_days=3&timezone=auto`),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,surface_pressure,visibility,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=4&wind_speed_unit=kmh&timezone=auto`),
       fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`, { headers: { "User-Agent": "central-clima" } }),
       fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${baseLat}&longitude=${baseLon}&current=european_aqi,uv_index,pm10,pm2_5&timezone=auto`).catch(() => null),
-      fetchNearestMetar(baseLat, baseLon, CHECKWX_KEY).catch(() => ({ temp: null, station: "Error METAR", distanceKm: null, note: null, timestamp: null })),
-      fetchMeteostatObservation(baseLat, baseLon, METEOSTAT_KEY).catch(() => ({ temp: null, station: null, distanceKm: null, desc: "Error Meteostat", timestamp: null }))
+      fetchNearestMetar(baseLat, baseLon, CHECKWX_KEY).catch(() => ({ temp: null, humidity: null, windSpeed: null, windDir: null, pressure: null, visibility: null, station: "Error METAR", distanceKm: null, note: null, timestamp: null })),
+      fetchMeteostatObservation(baseLat, baseLon, METEOSTAT_KEY).catch(() => ({ temp: null, humidity: null, windSpeed: null, windDir: null, pressure: null, precipitation: null, station: null, distanceKm: null, desc: "Error Meteostat", timestamp: null }))
     ]);
 
     const owData = owRes.ok ? await owRes.json() : null;
@@ -587,9 +494,61 @@ export default async function handler(req, res) {
     const aqiData = aqiRes && aqiRes.ok ? await aqiRes.json() : null;
 
     const resolvedCityName = city || owData?.name || "Ubicación actual";
-
-    // Llamada blindada a la REM San Luis
     const remData = await fetchREMObservation(baseLat, baseLon);
+
+    const owNormalized = {
+      id: 'openweather', type: 'model',
+      temp: owData?.main?.temp ?? null,
+      humidity: owData?.main?.humidity ?? null,
+      windSpeed: owData?.wind?.speed != null ? Number((owData.wind.speed * 3.6).toFixed(1)) : null, 
+      windDir: owData?.wind?.deg ? degToCard(owData.wind.deg) : null,
+      pressure: owData?.main?.pressure ?? null,
+      visibility: owData?.visibility != null ? Number((owData.visibility / 1000).toFixed(1)) : null, 
+      precipitation: owData?.rain?.['1h'] ?? owData?.snow?.['1h'] ?? 0
+    };
+
+    const omNormalized = {
+      id: 'openmeteo', type: 'model',
+      temp: omData?.current?.temperature_2m ?? null,
+      humidity: omData?.current?.relative_humidity_2m ?? null,
+      windSpeed: omData?.current?.wind_speed_10m ?? null, 
+      windDir: omData?.current?.wind_direction_10m ? degToCard(omData.current.wind_direction_10m) : null,
+      pressure: omData?.current?.surface_pressure ?? null,
+      visibility: omData?.current?.visibility != null ? Number((omData.current.visibility / 1000).toFixed(1)) : null, 
+      precipitation: omData?.current?.precipitation ?? 0
+    };
+
+    const metDetails = metData?.properties?.timeseries?.[0]?.data?.instant?.details;
+    const metNormalized = {
+      id: 'metno', type: 'model',
+      temp: metDetails?.air_temperature ?? null,
+      humidity: metDetails?.relative_humidity ?? null,
+      windSpeed: metDetails?.wind_speed != null ? Number((metDetails.wind_speed * 3.6).toFixed(1)) : null, 
+      windDir: metDetails?.wind_from_direction ? degToCard(metDetails.wind_from_direction) : null,
+      pressure: metDetails?.air_pressure_at_sea_level ?? null,
+      visibility: null,
+      precipitation: metData?.properties?.timeseries?.[0]?.data?.next_1_hours?.details?.precipitation_amount ?? 0
+    };
+
+    const rawSources = [
+      owNormalized, omNormalized, metNormalized,
+      { id: 'metar', type: 'metar', ...metarData },
+      { id: 'meteostat', type: 'meteostat', ...meteostatData },
+      { id: 'rem', type: 'rem', ...remData }
+    ];
+
+    const generalAnalysis = calculateAdvancedConsensus(rawSources);
+    const modelAnalysis = calculateAdvancedConsensus(rawSources.filter(s => s.type === 'model'));
+    const isUsed = (id) => generalAnalysis.acceptedIds.includes(id);
+
+    const consensus_fields = {
+      humidity: calculateSecondaryConsensus(rawSources, 'humidity', generalAnalysis.acceptedIds, true),
+      windSpeed: calculateSecondaryConsensus(rawSources, 'windSpeed', generalAnalysis.acceptedIds),
+      pressure: calculateSecondaryConsensus(rawSources, 'pressure', generalAnalysis.acceptedIds, true),
+      visibility: calculateSecondaryConsensus(rawSources, 'visibility', generalAnalysis.acceptedIds),
+      precipitation: calculateSecondaryConsensus(rawSources, 'precipitation', generalAnalysis.acceptedIds),
+      windDir: remData.windDir ?? metarData.windDir ?? omNormalized.windDir ?? owNormalized.windDir ?? "N/A"
+    };
 
     const dailyForecast = [];
     if (omData?.daily) {
@@ -598,7 +557,11 @@ export default async function handler(req, res) {
           date: omData.daily.time[i],
           max: omData.daily.temperature_2m_max?.[i] ?? null,
           min: omData.daily.temperature_2m_min?.[i] ?? null,
-          code: omData.daily.weather_code?.[i] ?? null
+          code: omData.daily.weather_code?.[i] ?? null,
+          rainProb: omData.daily.precipitation_probability_max?.[i] ?? 0,
+          precipitationSum: omData.daily.precipitation_sum?.[i] ?? 0,
+          windMax: omData.daily.wind_speed_10m_max?.[i] ?? null,
+          windDir: omData.daily.wind_direction_10m_dominant?.[i] ? degToCard(omData.daily.wind_direction_10m_dominant[i]) : "N/A"
         });
       }
     }
@@ -607,87 +570,38 @@ export default async function handler(req, res) {
        aqi: aqiData?.current?.european_aqi ?? null,
        pm10: aqiData?.current?.pm10 ?? null,
        uv: omData?.daily?.uv_index_max?.[0] ?? aqiData?.current?.uv_index ?? null,
-       rainProb: omData?.daily?.precipitation_probability_max?.[0] ?? null,
+       rainProb: omData?.daily?.precipitation_probability_max?.[0] ?? 0,
        agro: {
-         humidity: omData?.current?.relative_humidity_2m ?? null,
+         humidity: consensus_fields.humidity,
          frost: (omData?.daily?.temperature_2m_min?.[0] <= 3) ? "Alta" : "Baja"
        }
-    };
-
-    const rawSources = [
-      { id: 'openweather', type: 'model', temp: owData?.main?.temp },
-      { id: 'openmeteo', type: 'model', temp: omData?.current?.temperature_2m },
-      { id: 'metno', type: 'model', temp: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature },
-      { id: 'metar', type: 'metar', temp: metarData.temp, distanceKm: metarData.distanceKm, timestamp: metarData.timestamp },
-      { id: 'meteostat', type: 'meteostat', temp: meteostatData.temp, distanceKm: meteostatData.distanceKm, timestamp: meteostatData.timestamp },
-      { id: 'rem', type: 'rem', temp: remData.temp, distanceKm: remData.distanceKm, timestamp: remData.timestamp }
-    ];
-
-    const generalAnalysis = calculateAdvancedConsensus(rawSources);
-    const modelAnalysis = calculateAdvancedConsensus(rawSources.filter(s => s.type === 'model'));
-
-    const isUsed = (id) => generalAnalysis.acceptedIds.includes(id);
-
-    const models = {
-      average: modelAnalysis.value,
-      sources: {
-        openweather: { 
-          temp: owData?.main?.temp ?? null, 
-          humidity: owData?.main?.humidity ?? null, 
-          wind: owData?.wind?.speed ?? null, 
-          desc: owData?.weather?.[0]?.description ?? "",
-          usedInConsensus: isUsed('openweather')
-        },
-        openmeteo: { 
-          temp: omData?.current?.temperature_2m ?? null, 
-          wind: omData?.current?.wind_speed_10m ?? null, 
-          desc: "Open-Meteo",
-          usedInConsensus: isUsed('openmeteo')
-        },
-        metno: { 
-          temp: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.air_temperature ?? null, 
-          humidity: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.relative_humidity ?? null, 
-          wind: metData?.properties?.timeseries?.[0]?.data?.instant?.details?.wind_speed ?? null, 
-          desc: "MET Norway",
-          usedInConsensus: isUsed('metno')
-        }
-      }
     };
 
     const result = {
       consensus: generalAnalysis.value,
       confidence: generalAnalysis.acceptedIds.length >= 3 ? "alta" : "media",
       location: { name: resolvedCityName, lat: baseLat, lon: baseLon },
-      models,
-      observation: { 
-        metar: {
-          ...metarData,
-          usedInConsensus: isUsed('metar')
-        },
-        rem: {
-          ...remData,
-          usedInConsensus: isUsed('rem')
+      consensus_fields,
+      models: {
+        average: modelAnalysis.value,
+        sources: {
+          openweather: { ...owNormalized, desc: owData?.weather?.[0]?.description ?? "", usedInConsensus: isUsed('openweather') },
+          openmeteo: { ...omNormalized, desc: "Open-Meteo", usedInConsensus: isUsed('openmeteo') },
+          metno: { ...metNormalized, desc: "MET Norway", usedInConsensus: isUsed('metno') }
         }
       },
-      premium,
-      extra: { 
-        meteostat: {
-          ...meteostatData,
-          usedInConsensus: isUsed('meteostat')
-        }, 
-        owmKey: OPENWEATHER_KEY 
+      observation: { 
+        metar: { ...metarData, usedInConsensus: isUsed('metar') },
+        rem: { ...remData, usedInConsensus: isUsed('rem') }
       },
+      premium,
+      extra: { meteostat: { ...meteostatData, usedInConsensus: isUsed('meteostat') }, owmKey: OPENWEATHER_KEY },
       daily: dailyForecast
     };
 
     setCachedResponse(cacheKey, result);
     res.setHeader("X-Cache", "MISS");
-
-    if (format === 'instagram') {
-      return res.status(200).json(generateInstagramPayload(result));
-    }
-    return res.status(200).json(result);
-    
+    return res.status(200).json(format === 'instagram' ? generateInstagramPayload(result) : result);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Error backend", detail: error.message });
