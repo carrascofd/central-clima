@@ -1,3 +1,5 @@
+import { sql } from '@vercel/postgres';
+
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const METAR_MAX_DISTANCE_KM = 100;
 const REM_MAX_DISTANCE_KM = 60; 
@@ -572,8 +574,8 @@ export default async function handler(req, res) {
        uv: omData?.daily?.uv_index_max?.[0] ?? aqiData?.current?.uv_index ?? null,
        rainProb: omData?.daily?.precipitation_probability_max?.[0] ?? 0,
        agro: {
-         humidity: consensus_fields.humidity,
-         frost: (omData?.daily?.temperature_2m_min?.[0] <= 3) ? "Alta" : "Baja"
+          humidity: consensus_fields.humidity,
+          frost: (omData?.daily?.temperature_2m_min?.[0] <= 3) ? "Alta" : "Baja"
        }
     };
 
@@ -598,6 +600,28 @@ export default async function handler(req, res) {
       extra: { meteostat: { ...meteostatData, usedInConsensus: isUsed('meteostat') }, owmKey: OPENWEATHER_KEY },
       daily: dailyForecast
     };
+
+    // --- INTEGRACIÓN CON NEON (HISTORIAL/LOG) ---
+    try {
+      const fuentesTexto = generalAnalysis.acceptedIds.join(', ');
+      const condicionTexto = owData?.weather?.[0]?.description ?? "N/A";
+
+      await sql`
+        INSERT INTO historial_clima 
+        (ciudad, temperatura_consenso, humedad_consenso, viento_consenso, condicion_consenso, fuentes_respondieron)
+        VALUES (
+          ${resolvedCityName}, 
+          ${generalAnalysis.value}, 
+          ${consensus_fields.humidity}, 
+          ${consensus_fields.windSpeed}, 
+          ${condicionTexto}, 
+          ${fuentesTexto}
+        );
+      `;
+    } catch (dbError) {
+      console.error("Error al guardar en el log de Neon:", dbError);
+    }
+    // --------------------------------------------
 
     setCachedResponse(cacheKey, result);
     res.setHeader("X-Cache", "MISS");
