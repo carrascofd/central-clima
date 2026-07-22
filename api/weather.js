@@ -73,6 +73,47 @@ function degToCard(deg) {
   return angles[index];
 }
 
+// Fase lunar matemática simple
+function calcularFaseLunar() {
+  const LUNAR_MONTH = 29.53058867;
+  const knownNewMoon = new Date('2024-01-11T11:57:00Z').getTime();
+  const diffDays = (Date.now() - knownNewMoon) / (1000 * 60 * 60 * 24);
+  const phase = (diffDays % LUNAR_MONTH) / LUNAR_MONTH;
+  if (phase < 0.05 || phase > 0.95) return { name: "Nueva", emoji: "🌑" };
+  if (phase < 0.25) return { name: "Creciente", emoji: "🌒" };
+  if (phase < 0.45) return { name: "Cuarto Creciente", emoji: "🌓" };
+  if (phase < 0.55) return { name: "Llena", emoji: "🌕" };
+  if (phase < 0.75) return { name: "Menguante", emoji: "🌖" };
+  return { name: "Cuarto Menguante", emoji: "🌗" };
+}
+
+// Traductor estático MetNorway
+function traducirMetNorway(code) {
+  if(!code) return null;
+  const map = {
+    'clearsky': 'Despejado', 'fair': 'Poco nublado',
+    'partlycloudy': 'Parcialmente nublado', 'cloudy': 'Nublado',
+    'heavyrain': 'Lluvia fuerte', 'lightrain': 'Lluvia ligera',
+    'rain': 'Lluvia', 'showers': 'Chubascos', 'snow': 'Nieve',
+    'fog': 'Niebla', 'thunder': 'Tormenta eléctrica'
+  };
+  const baseCode = code.split('_')[0];
+  return map[baseCode] || code;
+}
+
+// Traductor WMO (Open-Meteo)
+function translateWmoCode(code) {
+  if (code === 0) return "Despejado";
+  if ([1, 2, 3].includes(code)) return "Parcialmente nublado";
+  if ([45, 48].includes(code)) return "Niebla";
+  if ([51, 53, 55].includes(code)) return "Llovizna ligera";
+  if ([61, 63, 65].includes(code)) return "Lluvias intermitentes";
+  if ([71, 73, 75].includes(code)) return "Nieve";
+  if ([80, 81, 82].includes(code)) return "Chubascos de lluvia";
+  if ([95, 96, 99].includes(code)) return "Tormenta eléctrica";
+  return "Tiempo estable";
+}
+
 // --- SERVICIOS COMPLEMENTARIOS ---
 async function fetchNearestMetar(lat, lon, apiKey) {
   const defaultObj = { temp: null, humidity: null, windSpeed: null, windDir: null, pressure: null, visibility: null, station: "Sin datos", distanceKm: null, note: "CHECKWX_KEY no configurada", timestamp: null };
@@ -391,72 +432,11 @@ function calculateSecondaryConsensus(sources, field, acceptedIds, isInteger = fa
   return isInteger ? Math.round(avg) : Number(avg.toFixed(1));
 }
 
-function translateWmoCode(code) {
-  if (code === 0) return "Despejado ☀️";
-  if ([1, 2, 3].includes(code)) return "Parcialmente nublado ⛅";
-  if ([45, 48].includes(code)) return "Niebla o neblina 🌫️";
-  if ([51, 53, 55].includes(code)) return "Llovizna ligera 🌦️";
-  if ([61, 63, 65].includes(code)) return "Lluvias intermitentes 🌧️";
-  if ([71, 73, 75].includes(code)) return "Probabilidad de nieve ❄️";
-  if ([80, 81, 82].includes(code)) return "Chubascos de lluvia 🌧️";
-  if ([95, 96, 99].includes(code)) return "Tormenta eléctrica ⛈️";
-  return "Tiempo estable 🌤️";
-}
-
-function generateInstagramPayload(data) {
-  const cleanCityName = data.location.name.replace(/\s+/g, '');
-  const currentHour = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' });
-  const todayForecast = data.daily?.[0] || {};
-  const maxTemp = todayForecast.max != null ? `${todayForecast.max}°C` : '--°C';
-  const minTemp = todayForecast.min != null ? `${todayForecast.min}°C` : '--°C';
-  const dayCondition = translateWmoCode(todayForecast.code);
-
-  const intros = [
-    `📍 CONDICIONES ACTUALES | ${data.location.name}\n\nReporte consolidado de las ${currentHour} hs. Nuestro algoritmo procesó las mediciones fijando una temperatura real de ${data.consensus}°C. Proyección general:`,
-    `🌍 ESTADO DEL TIEMPO | ${data.location.name}\n\nLectura en tiempo real (${currentHour} hs). El consenso matemático fijó la temperatura actual en ${data.consensus}°C. Panorama para hoy:`,
-    `📊 METEO REPORTE | ${data.location.name}\n\nDatos frescos de las ${currentHour} hs. Pasamos por el colador analítico los sensores meteorológicos: temperatura actual de ${data.consensus}°C. Mirá la proyección:`
-  ];
-  const outros = [
-    `\n\n💻 Procesado en tiempo real por Central de Clima.\n\n#Clima #${cleanCityName} #Meteorologia #ConsensoClimatico`,
-    `\n\n🚀 Monitoreo automatizado por Central de Clima.\n\n#Tiempo #${cleanCityName} #DataScience #ClimaHoy`,
-    `\n\n🌾 Optimización meteorológica de precisión.\n\n#Meteorologia #${cleanCityName} #CampoArgentino #Consenso`
-  ];
-
-  const intro = intros[new Date().getDate() % intros.length];
-  const outro = outros[new Date().getDate() % outros.length];
-
-  let groundTruthText = `• ${data.observation.metar.station || 'Estación Cercana'}: ${data.observation.metar.temp ?? '--'}°C`;
-  if (data.observation.rem && data.observation.rem.temp !== null && data.observation.rem.visible !== false) {
-    groundTruthText = `• ${data.observation.rem.station} (REM): ${data.observation.rem.temp}°C\n• METAR: ${data.observation.metar.temp ?? '--'}°C`;
-  }
-
-  const body = `
-🔮 Pronóstico para hoy:
-• Tendencia general: ${dayCondition}
-• Mínima esperada: ${minTemp} | Máxima proyectada: ${maxTemp}
-
-🤖 Consenso Consolidado:
-• Viento promedio: ${data.consensus_fields.windSpeed ?? '--'} km/h
-• Humedad ambiente: ${data.consensus_fields.humidity ?? '--'}%
-• Presión barométrica: ${data.consensus_fields.pressure ?? '--'} hPa
-
-📡 Sensores Físicos Integrados:
-${groundTruthText}
-
-🌾 Indicadores Clave:
-• Probabilidad de Precipitaciones: ${data.premium.rainProb ?? 0}%
-• Riesgo de Heladas: ${data.premium.agro.frost}
-• Índice UV Máximo: ${data.premium.uv ?? '--'}`;
-
-  return { caption: `${intro}\n${body}${outro}`, raw_data: data };
-}
-
 // --- HANDLER PRINCIPAL ---
 export default async function handler(req, res) {
   const city = req.query.city;
   const latQuery = req.query.lat;
   const lonQuery = req.query.lon;
-  const format = req.query.format;
 
   const OPENWEATHER_KEY = process.env.OPENWEATHER_KEY;
   const CHECKWX_KEY = process.env.CHECKWX_KEY;
@@ -478,14 +458,14 @@ export default async function handler(req, res) {
     const cached = getCachedResponse(cacheKey);
     if (cached) {
       res.setHeader("X-Cache", "HIT");
-      return res.status(200).json(format === 'instagram' ? generateInstagramPayload(cached) : cached);
+      return res.status(200).json(cached);
     }
 
     const [owRes, omRes, metRes, aqiRes, metarData, meteostatData] = await Promise.all([
-      fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&appid=${OPENWEATHER_KEY}`),
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,surface_pressure,visibility,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=4&wind_speed_unit=kmh&timezone=auto`),
+      fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${baseLat}&lon=${baseLon}&units=metric&lang=es&appid=${OPENWEATHER_KEY}`),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${baseLat}&longitude=${baseLon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,surface_pressure,visibility,precipitation,weather_code,dew_point_2m,et0_fao_evapotranspiration&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=4&wind_speed_unit=kmh&timezone=auto`),
       fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${baseLat}&lon=${baseLon}`, { headers: { "User-Agent": "central-clima" } }),
-      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${baseLat}&longitude=${baseLon}&current=european_aqi,uv_index,pm10,pm2_5&timezone=auto`).catch(() => null),
+      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${baseLat}&longitude=${baseLon}&current=european_aqi,uv_index,pm10,pm2_5,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen&timezone=auto`).catch(() => null),
       fetchNearestMetar(baseLat, baseLon, CHECKWX_KEY).catch(() => ({ temp: null, humidity: null, windSpeed: null, windDir: null, pressure: null, visibility: null, station: "Error METAR", distanceKm: null, note: null, timestamp: null })),
       fetchMeteostatObservation(baseLat, baseLon, METEOSTAT_KEY).catch(() => ({ temp: null, humidity: null, windSpeed: null, windDir: null, pressure: null, precipitation: null, station: null, distanceKm: null, desc: "Error Meteostat", timestamp: null }))
     ]);
@@ -521,6 +501,7 @@ export default async function handler(req, res) {
     };
 
     const metDetails = metData?.properties?.timeseries?.[0]?.data?.instant?.details;
+    const metSummaryCode = metData?.properties?.timeseries?.[0]?.data?.next_1_hours?.summary?.symbol_code;
     const metNormalized = {
       id: 'metno', type: 'model',
       temp: metDetails?.air_temperature ?? null,
@@ -568,14 +549,30 @@ export default async function handler(req, res) {
       }
     }
 
+    let totalPollen = null;
+    if (aqiData?.current) {
+        const p1 = aqiData.current.alder_pollen || 0;
+        const p2 = aqiData.current.birch_pollen || 0;
+        const p3 = aqiData.current.grass_pollen || 0;
+        const p4 = aqiData.current.mugwort_pollen || 0;
+        const p5 = aqiData.current.olive_pollen || 0;
+        const p6 = aqiData.current.ragweed_pollen || 0;
+        totalPollen = (p1 + p2 + p3 + p4 + p5 + p6).toFixed(1);
+        if(totalPollen === "0.0") totalPollen = null;
+    }
+
     const premium = {
        aqi: aqiData?.current?.european_aqi ?? null,
        pm10: aqiData?.current?.pm10 ?? null,
        uv: omData?.daily?.uv_index_max?.[0] ?? aqiData?.current?.uv_index ?? null,
        rainProb: omData?.daily?.precipitation_probability_max?.[0] ?? 0,
+       pollen: totalPollen,
        agro: {
           humidity: consensus_fields.humidity,
-          frost: (omData?.daily?.temperature_2m_min?.[0] <= 3) ? "Alta" : "Baja"
+          frost: (omData?.daily?.temperature_2m_min?.[0] <= 3) ? "Alta" : "Baja",
+          dewPoint: omData?.current?.dew_point_2m ?? null,
+          et0: omData?.current?.et0_fao_evapotranspiration ?? null,
+          lunarPhase: calcularFaseLunar()
        }
     };
 
@@ -588,8 +585,8 @@ export default async function handler(req, res) {
         average: modelAnalysis.value,
         sources: {
           openweather: { ...owNormalized, desc: owData?.weather?.[0]?.description ?? "", usedInConsensus: isUsed('openweather') },
-          openmeteo: { ...omNormalized, desc: "Open-Meteo", usedInConsensus: isUsed('openmeteo') },
-          metno: { ...metNormalized, desc: "MET Norway", usedInConsensus: isUsed('metno') }
+          openmeteo: { ...omNormalized, desc: translateWmoCode(omData?.current?.weather_code), usedInConsensus: isUsed('openmeteo') },
+          metno: { ...metNormalized, desc: traducirMetNorway(metSummaryCode), usedInConsensus: isUsed('metno') }
         }
       },
       observation: { 
@@ -601,11 +598,9 @@ export default async function handler(req, res) {
       daily: dailyForecast
     };
 
-    // --- INTEGRACIÓN CON NEON (HISTORIAL/LOG) ---
     try {
       const fuentesTexto = generalAnalysis.acceptedIds.join(', ');
       const condicionTexto = owData?.weather?.[0]?.description ?? "N/A";
-
       await sql`
         INSERT INTO historial_clima 
         (ciudad, temperatura_consenso, humedad_consenso, viento_consenso, condicion_consenso, fuentes_respondieron)
@@ -621,11 +616,10 @@ export default async function handler(req, res) {
     } catch (dbError) {
       console.error("Error al guardar en el log de Neon:", dbError);
     }
-    // --------------------------------------------
 
     setCachedResponse(cacheKey, result);
     res.setHeader("X-Cache", "MISS");
-    return res.status(200).json(format === 'instagram' ? generateInstagramPayload(result) : result);
+    return res.status(200).json(result);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Error backend", detail: error.message });

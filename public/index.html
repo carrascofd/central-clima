@@ -22,18 +22,27 @@ body {
   margin: 0; font-family: 'Inter', sans-serif;
   background: linear-gradient(rgba(6, 11, 25, 0.92), rgba(6, 11, 25, 0.96)), url('https://images.unsplash.com/photo-1501630834273-4b5604d2ee31?q=80&w=1600&auto=format&fit=crop');
   background-size: cover; background-position: center; background-attachment: fixed; color: white;
+  transition: background 0.3s, color 0.3s;
 }
 .header {
   position: sticky; top: 0; z-index: 999; backdrop-filter: blur(18px); background: rgba(8, 15, 30, 0.75);
   border-bottom: 1px solid rgba(255, 255, 255, .06); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  transition: background 0.3s;
 }
-.logo-container { display: flex; align-items: center; }
+.logo-container { display: flex; align-items: center; gap: 15px; transition: all 0.3s ease; }
 .logo-container img { height: 140px; width: auto; object-fit: contain; max-width: 100%; }
 
-.search-wrapper { width: 100%; max-width: 450px; position: relative; }
+/* Botón Dark/Light Mode */
+.theme-switch {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px;
+  padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; transition: 0.2s;
+}
+.theme-switch:hover { background: rgba(255,255,255,0.2); }
+
+.search-wrapper { width: 100%; max-width: 450px; position: relative; display: flex; align-items: center; gap: 10px;}
 .search-box {
   display: flex; align-items: center; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px; overflow: hidden; backdrop-filter: blur(12px); transition: 0.2s;
+  border-radius: 18px; overflow: hidden; backdrop-filter: blur(12px); transition: 0.2s; flex-grow: 1;
 }
 .search-box:focus-within { border-color: #60a5fa; box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15); }
 .search-icon { padding-left: 18px; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
@@ -42,7 +51,7 @@ body {
 .search-btn:hover { background: #2563eb; }
 
 .autocomplete {
-  position: absolute; top: 60px; left: 0; right: 0; background: rgba(18, 25, 42, 0.98); border-radius: 18px;
+  position: absolute; top: 60px; left: 0; right: 40px; background: rgba(18, 25, 42, 0.98); border-radius: 18px;
   overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); backdrop-filter: blur(18px); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: none; z-index: 1000;
 }
 .autocomplete-item { padding: 16px 20px; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.05); transition: 0.15s; }
@@ -55,29 +64,27 @@ body {
   background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 26px;
   padding: 28px; backdrop-filter: blur(14px); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); margin-bottom: 24px;
 }
-.temp-main { font-size: 74px; font-weight: 700; margin: 0; }
-.confidence-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; margin-bottom: 20px; }
+.temp-main { font-size: 74px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 15px;}
+.temp-condition { font-size: 22px; font-weight: 500; color: #bcd3ee; margin-top: 5px; text-transform: capitalize; }
+.temp-st { font-size: 16px; color: #9fb0c7; margin-top: 8px; font-weight: 500; }
+
+.confidence-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; margin-bottom: 20px; }
 .confidence { color: #9cc6ff; font-size: 18px; }
 
-/* Botón disparador del Análisis Técnico */
+/* Botones modales info mejorados */
 .info-btn {
-  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #9fb0c7; padding: 5px 12px; border-radius: 10px; font-size: 13px; font-weight: 500;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #9cc6ff; padding: 6px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
   cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;
 }
-.info-btn:hover {
-  background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(96, 165, 250, 0.3);
-}
+.info-btn-small { padding: 5px 10px; font-size: 12px; margin-left: auto; background: rgba(59, 130, 246, 0.15); border-color: rgba(96, 165, 250, 0.3); color: #60a5fa; }
+.info-btn:hover { background: rgba(59, 130, 246, 0.25); color: white; border-color: rgba(96, 165, 250, 0.5); transform: translateY(-1px); }
 
 .temp-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 20px; }
 .location-main { font-size: 32px; font-weight: 600; color: #bcd3ee; }
 
-.consensus-dashboard {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 24px;
-}
-.dashboard-item {
-  background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 12px;
-}
+.consensus-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 24px; }
+.dashboard-item { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 12px; }
 .dashboard-item i { color: #60a5fa; }
 .dashboard-label { font-size: 12px; color: #9fb0c7; text-transform: uppercase; letter-spacing: 0.5px; }
 .dashboard-value { font-size: 18px; font-weight: 600; margin-top: 2px; }
@@ -101,7 +108,7 @@ body {
 .section-title { font-size: 22px; margin: 36px 0 16px 0; color: #bcd3ee; font-weight: 600; display: flex; align-items: center; gap: 10px; }
 .api-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
 .obs-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-.premium-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.premium-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 
 .api-card {
   background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 22px;
@@ -112,15 +119,15 @@ body {
 .api-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
 .api-temp { font-size: 38px; font-weight: 700; margin-bottom: 12px; }
 .api-detail { color: #c0d4ea; margin-bottom: 6px; font-size: 14px; line-height: 1.4; }
-.ok { color: #22c55e; margin-bottom: 14px; }
+.ok { color: #22c55e; margin-top: auto; padding-top: 10px; font-weight: 500;}
 
 .badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
-.badge-status { display: flex; align-items: center; gap: 4px; margin-top: auto; align-self: flex-start; }
+.badge-status { display: flex; align-items: center; gap: 4px; margin-top: 14px; align-self: flex-start; }
 .badge-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
 .badge-yellow { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
 .badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
 
-/* ESTILOS ESPECÍFICOS DEL MODAL (ESTRUCTURA PREMIUM COMPATIBLE CON ADSENSE LECTURA) */
+/* MODAL MULTIUSO */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(4, 7, 16, 0.85); backdrop-filter: blur(6px);
   display: flex; align-items: center; justify-content: center; z-index: 2000;
@@ -128,7 +135,7 @@ body {
 }
 .modal-backdrop.active { opacity: 1; pointer-events: auto; }
 .modal-card {
-  background: #141b29; border: 1px solid rgba(255, 255, 255, 0.08); width: 100%; max-w: 680px;
+  background: #141b29; border: 1px solid rgba(255, 255, 255, 0.08); width: 100%; max-width: 680px;
   border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); display: flex; flex-direction: column;
   max-height: 85vh; transform: scale(0.95); transition: transform 0.25s ease;
 }
@@ -147,6 +154,60 @@ body {
 .modal-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: flex-end; background: #111722; border-bottom-left-radius: 23px; border-bottom-right-radius: 23px; }
 .modal-btn-understand { background: #3b82f6; color: white; border: none; padding: 10px 22px; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px; transition: 0.15s; }
 .modal-btn-understand:hover { background: #2563eb; }
+
+/* THEME: LIGHT MODE OVERRIDES & LEGIBILITY */
+body.light-theme { background: linear-gradient(rgba(240, 244, 250, 0.95), rgba(240, 244, 250, 0.98)), url('https://images.unsplash.com/photo-1501630834273-4b5604d2ee31?q=80&w=1600&auto=format&fit=crop'); color: #0f172a; }
+body.light-theme .header { background: rgba(226, 232, 240, 0.92); border-bottom: 1px solid rgba(0,0,0,0.12); }
+
+/* NUEVO: Contraste del logo en modo claro */
+body.light-theme .logo-container { background: rgba(255, 255, 255, 0.85); padding: 8px 16px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.08); }
+
+body.light-theme .main-card, body.light-theme .api-card, body.light-theme .info-box, body.light-theme .forecast-card { background: rgba(255, 255, 255, 0.92); border-color: rgba(0, 0, 0, 0.12); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08); color: #0f172a; }
+body.light-theme .search-box { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); }
+body.light-theme .search-box input { color: #0f172a; }
+body.light-theme .search-icon { color: #334155; }
+body.light-theme .theme-switch { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.12); color: #0f172a; }
+body.light-theme .theme-switch:hover { background: rgba(0,0,0,0.12); }
+
+/* NUEVO: Fuente negra en paneles desplegables (autocomplete) */
+body.light-theme .autocomplete { background: #ffffff; border-color: rgba(0,0,0,0.1); box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+body.light-theme .autocomplete-item { border-bottom-color: rgba(0,0,0,0.05); color: #000000; }
+body.light-theme .autocomplete-item:hover { background: rgba(0,0,0,0.05); }
+body.light-theme .autocomplete-name { color: #000000; font-weight: 700; }
+body.light-theme .autocomplete-detail { color: #475569; }
+
+body.light-theme .modal-card { background: #ffffff; border-color: rgba(0,0,0,0.1); color: #0f172a; }
+body.light-theme .modal-header, body.light-theme .modal-footer { background: #f8fafc; border-color: rgba(0,0,0,0.1); }
+
+/* NUEVO: Fuente negra en modales para legibilidad estricta */
+body.light-theme .modal-body { color: #000000; }
+body.light-theme .modal-body strong { color: #000000; }
+body.light-theme .modal-close-btn { color: #64748b; }
+body.light-theme .modal-close-btn:hover { color: #000000; }
+
+body.light-theme .section-title, body.light-theme .location-main { color: #1e293b; }
+body.light-theme .temp-main, body.light-theme .api-temp { color: #0f172a; }
+body.light-theme .temp-condition { color: #334155; }
+body.light-theme .dashboard-item { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.08); color: #0f172a; }
+body.light-theme .dashboard-label, body.light-theme .api-detail, body.light-theme .forecast-extra, body.light-theme .temp-st { color: #1e293b; }
+body.light-theme .dashboard-value { color: #0f172a; }
+body.light-theme .forecast-date, body.light-theme .confidence { color: #2563eb; }
+body.light-theme .contact-footer, body.light-theme .legend-footer { background: rgba(255,255,255,0.85); border-color: rgba(0,0,0,0.1); color: #1e293b; }
+body.light-theme .contact-footer span { color: #0f172a; }
+
+/* NUEVO: Contraste del copyright en pie de pagina en modo claro */
+body.light-theme .copyright-footer { color: #475569; font-weight: 500; }
+
+body.light-theme .info-btn { color: #2563eb; border-color: rgba(37, 99, 235, 0.2); background: rgba(59, 130, 246, 0.08); }
+body.light-theme .info-btn:hover { background: rgba(59, 130, 246, 0.2); color: #1d4ed8; }
+body.light-theme .info-box div[style*="background: rgba(0,0,0,0.2)"] {
+  background: rgba(0,0,0,0.05) !important;
+  color: #1e293b !important;
+  border-color: rgba(0,0,0,0.1) !important;
+}
+body.light-theme .info-box div[style*="background: rgba(0,0,0,0.2)"] strong {
+  color: #0f172a !important;
+}
 
 .contact-footer {
   text-align: center; margin-top: 36px; font-size: 15px; color: #bcd3ee; 
@@ -190,6 +251,9 @@ body {
       <input id="city" placeholder="Buscar ciudad o ubicación..." autocomplete="off" />
       <button class="search-btn" onclick="buscarManual()">Consultar</button>
     </div>
+    <div class="theme-switch" onclick="toggleTheme()" title="Alternar Modo Claro/Oscuro">
+      <i data-lucide="sun" id="theme-icon" style="width: 20px; height: 20px;"></i>
+    </div>
     <div id="autocomplete" class="autocomplete"></div>
   </div>
 </div>
@@ -198,14 +262,17 @@ body {
 
   <div class="main-card">
     <div class="temp-row">
-      <h1 id="temp" class="temp-main">-- &deg;C</h1>
+      <div>
+        <h1 id="temp" class="temp-main">-- &deg;C</h1>
+        <div id="temp-condition" class="temp-condition">Cargando...</div>
+        <div id="temp-st" class="temp-st"></div>
+      </div>
       <div id="locationName" class="location-main">Cargando ubicación...</div>
     </div>
     
-    <!-- Fila de Confiabilidad con botón disparador integrado -->
     <div class="confidence-row">
       <div id="confidence" class="confidence">Consenso Analítico: Ponderando fuentes</div>
-      <button onclick="toggleModal(true)" class="info-btn">
+      <button onclick="openInfoModal('consenso')" class="info-btn">
         <span>¿Cómo funciona?</span>
         <i data-lucide="info" style="width: 14px; height: 14px;"></i>
       </button>
@@ -264,32 +331,18 @@ body {
   <div class="copyright-footer">&copy;2026 - FDC Apps & Webs</div>
 </div>
 
-<!-- CAPA ESTRUCTURAL DE ARTÍCULO: MODAL EMERGENTE EDITORIAL DE CALIDAD PARA ADSENSE -->
-<div id="tech-modal" class="modal-backdrop">
+<!-- MODAL GENÉRICO PARA ARTÍCULOS Y EXPLICACIONES -->
+<div id="dynamic-modal" class="modal-backdrop">
   <div class="modal-card">
     <div class="modal-header">
-      <div class="modal-header-title">
-        <i data-lucide="book-open" style="width: 18px; height: 18px;"></i>
-        <span>Análisis Técnico: Consenso Meteorológico</span>
+      <div class="modal-header-title" id="modal-title-container">
+        <i data-lucide="book-open" id="modal-icon" style="width: 18px; height: 18px;"></i>
+        <span id="modal-title">Cargando...</span>
       </div>
       <button onclick="toggleModal(false)" class="modal-close-btn">&times;</button>
     </div>
-    <article class="modal-body">
-      <h3>¿Por qué la Central de Clima no depende de un solo modelo meteorológico?</h3>
-      <p>La predicción atmosférica moderna enfrenta un desafío estructural: los microclimas y la topografía local introducen márgenes de error impredecibles en las simulaciones globales. Proveedores internacionales de renombre procesan dinámicas de fluidos a gran escala, pero carecen del anclaje inmediato de las condiciones de superficie. Al depender de una sola fuente, los usuarios quedan expuestos a sesgos matemáticos puntuales conocidos como anomalías de nodo predictivo.</p>
-      <p>Para mitigar esta variabilidad, nuestra plataforma implementa un <strong>Algoritmo de Consenso Avanzado</strong>. Este motor matemático realiza una ingesta simultánea tanto de modelos predictivos numéricos (como OpenWeather Map, Open-Meteo y la agencia noruega MET Norway) como de la infraestructura física desplegada en terreno. El resultado final no es un promedio simple y lineal, sino un cálculo depurado mediante filtros de desviación y ponderación estadística inteligente.</p>
-
-      <h3>Verdad de Campo (Ground Truth) y Mitigación de Desviaciones</h3>
-      <p>El núcleo de nuestra precisión radica en el <strong>Anclaje de Verdad de Campo</strong>. El algoritmo prioriza sensores telemétricos físicos sobre cualquier ecuación predictiva. Cuando realizas una consulta dentro de una región monitorizada, el backend busca e integra los reportes oficiales en tiempo real de infraestructuras locales clave, incluyendo los nodos de la Red de Estaciones Meteorológicas (REM) de San Luis y estaciones METAR aeroportuarias de estandarización internacional aeronáutica.</p>
-      <p>El proceso estadístico se ejecuta bajo las siguientes directrices estructurales de control:</p>
-      <ul class="editorial-list">
-        <li><strong>Filtro Dinámico de Anomalías:</strong> Si un modelo computacional presenta una desviación superior a los 4.5°C respecto a los sensores físicos instalados en la superficie regional, ese modelo es catalogado temporalmente como "Inestable" y se lo excluye del cálculo para proteger el ecosistema de datos de falsos positivos climáticos.</li>
-        <li><strong>Asignación Lineal de Pesos Estadísticos:</strong> No todos los datos valen lo mismo. Una estación física terrestre de la red provincial es ponderada con un factor multiplicador de confiabilidad de 5.0x, una terminal METAR recibe hasta 4.0x en función de su radio de proximidad (con un límite estricto de 100 kilómetros), mientras que las proyecciones digitales se integran en un balance estándar de 1.0x.</li>
-        <li><strong>Consolidación en Ausencia de Telemetría:</strong> Si la ubicación consultada se encuentra en un área sin estaciones físicas cercanas disponibles, el motor matemático activa automáticamente un algoritmo de ordenamiento de arrays. Se calcula la mediana de las temperaturas de los modelos predictivos válidos dentro de una ventana de tolerancia paramétrica de 2.0°C, eliminando del cálculo los extremos sesgados antes de emitir un veredicto climático final.</li>
-      </ul>
-
-      <h3>Variables Secundarias Entrelazadas</h3>
-      <p>Este riguroso análisis no se limita a la temperatura ambiente. Atributos críticos como la humedad atmosférica superficial, la presión barométrica absoluta, la velocidad promedio del viento y los volúmenes acumulados de precipitación por hora son reevaluados utilizando únicamente las fuentes que han sido previamente validadas y aprobadas en la matriz de consistencia térmica principal. Esto garantiza que la información técnica presentada a sectores altamente sensibles como la agronomía, la logística aeroportuaria y la gestión medioambiental urbana mantenga una coherencia matemática del cien por ciento.</p>
+    <article class="modal-body" id="modal-body">
+      <!-- El contenido se inyecta por JS -->
     </article>
     <div class="modal-footer">
       <button onclick="toggleModal(false)" class="modal-btn-understand">Entendido</button>
@@ -300,23 +353,142 @@ body {
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
+// --- TEXTOS EDITORIALES PARA ADSENSE (MODALES) ---
+const textDB = {
+  consenso: {
+    title: "Análisis Técnico y Sensación Térmica", icon: "book-open",
+    html: `
+      <h3>¿Por qué la Central de Clima no depende de un solo modelo meteorológico?</h3>
+      <p>La predicción atmosférica moderna enfrenta un desafío estructural: los microclimas y la topografía local introducen márgenes de error impredecibles en las simulaciones globales. Al depender de una sola fuente, los usuarios quedan expuestos a sesgos matemáticos puntuales conocidos como anomalías de nodo predictivo.</p>
+      <p>Para mitigar esta variabilidad, nuestra plataforma implementa un <strong>Algoritmo de Consenso Avanzado</strong>. Este motor matemático realiza una ingesta simultánea tanto de modelos predictivos numéricos (OpenWeather, Open-Meteo, MET Norway) como de infraestructuras físicas desplegadas en terreno, depurando el cálculo final mediante filtros de desviación y ponderación estadística inteligente.</p>
+      
+      <h3>Verdad de Campo (Ground Truth) y Mitigación de Desviaciones</h3>
+      <p>Para evitar que los modelos numéricos se desvíen de la realidad física, el algoritmo establece anclajes de verdad de campo utilizando estaciones meteorológicas automáticas de alta precisión y redes provinciales o aeronáuticas. Cualquier simulación numérica que presente una divergencia anómala respecto a estas mediciones empíricas es ponderada a la baja o excluida temporalmente del cálculo central.</p>
+
+      <h3>Variables Secundarias Entrelazadas</h3>
+      <p>El consenso no opera únicamente sobre la temperatura. Las variables secundarias como humedad, presión atmosférica, velocidad del viento y visibilidad también son sometidas a un filtrado cruzado estricto entre las fuentes validadas, garantizando que todo el panel de métricas guarde coherencia termodinámica interna.</p>
+
+      <h3>Sensación Térmica: El factor humano</h3>
+      <p>A toda esta amalgama de datos añadimos el cálculo interno de la <strong>Sensación Térmica</strong>. Este índice no proviene de las fuentes externas de manera aislada, sino que lo calculamos en nuestros propios servidores combinando de forma estricta los datos ya consensuados de <strong>temperatura, velocidad del viento y humedad relativa</strong>.</p>
+      <p>Para garantizar precisión humana, el algoritmo emplea dos fórmulas avaladas por la Organización Meteorológica Mundial:</p>
+      <ul class="editorial-list">
+        <li><strong>Enfriamiento Eólico (Wind Chill):</strong> Se activa automáticamente con temperaturas inferiores a 10°C y vientos considerables. El viento desplaza la capa aislante de aire cálido alrededor del cuerpo, acelerando la pérdida de calor. <em>Fórmula utilizada: W = 13.12 + 0.6215*T<sub>a</sub> - 11.37*V<sup>0.16</sup> + 0.3965*T<sub>a</sub>*V<sup>0.16</sup></em>.</li>
+        <li><strong>Índice de Calor (Heat Index):</strong> Se activa con temperaturas superiores a 27°C y humedad superior al 40%. La alta humedad satura el aire limitando la evaporación del sudor humano, lo que impide que el cuerpo se enfríe de manera natural. <em>Utilizamos la ecuación múltiple de Rothfusz fundamentada en mediciones termodinámicas.</em></li>
+      </ul>`
+  },
+  aqi: {
+    title: "Índices Ambientales: Calidad del Aire y Polen", icon: "wind",
+    html: `
+      <h3>Índice de Calidad del Aire (AQI)</h3>
+      <p>El AQI es una métrica universal empleada para reportar la calidad diaria del aire. Te indica cuán limpio o contaminado está el aire a nivel local, centrándose en los efectos sobre la salud que puedes experimentar en unas pocas horas tras la exposición.</p>
+      <p>Contemplamos las micropartículas PM10 y PM2.5, generadas comúnmente por combustión, polvo urbano o industria. Cuando este índice se eleva a niveles "Moderados" o "Malos", es recomendable que los grupos de riesgo limiten su actividad física al aire libre.</p>
+      <h3>Concentración de Polen y Alergias</h3>
+      <p>Sumamos las mediciones telemétricas de esporas de pastos, abedules, olivos y ambrosía para entregar un <strong>Nivel de Polen</strong> consolidado. Durante la primavera y las transiciones estacionales, conocer la alta carga polínica ambiental resulta vital para pacientes con rinitis alérgica y afecciones asmáticas.</p>`
+  },
+  uv: {
+    title: "Radiación Ultravioleta (UV)", icon: "sun",
+    html: `
+      <h3>Radiación Ultravioleta (UV)</h3>
+      <p>El índice UV mide la intensidad de la radiación solar capaz de producir quemaduras cutáneas y daños celulares a largo plazo. Un valor de UV superior a 6 requiere fotoprotección obligatoria, uso de lentes con filtro UV y evitar la exposición directa durante las horas centrales del día.</p>`
+  },
+  agro: {
+    title: "Agrometeorología de Precisión", icon: "sprout",
+    html: `
+      <h3>Punto de Rocío (Dew Point)</h3>
+      <p>El punto de rocío es la temperatura a la cual el aire debe enfriarse (manteniendo la presión constante) para que el vapor de agua condense en rocío. En el sector agrícola, es un indicador insustituible para prever bancos de niebla y predecir <strong>heladas de radiación</strong> nocivas para cultivos y brotes tiernos.</p>
+      <h3>Evapotranspiración (ET₀)</h3>
+      <p>Es la suma de la evaporación del agua superficial del suelo y la transpiración de las plantas. Conocer este valor (expresado en mm) permite a los productores agrícolas establecer regímenes de riego de extrema eficiencia, devolviendo al lote exactamente el volumen hídrico perdido en la jornada anterior. ¡Ni una gota de más!</p>
+      <h3>Fase Lunar Agrícola</h3>
+      <p>Más allá de lo folclórico, las fases lunares inducen variaciones sutiles en la presión atmosférica y el movimiento de la savia en las plantas debido al magnetismo gravitacional, siendo una guía adicional en la toma de decisiones para tareas de injertos, siembra y cosecha.</p>`
+  },
+  rem: {
+    title: "Red de Estaciones Meteorológicas (REM)", icon: "shield-check",
+    html: `
+      <h3>Telemetría Provincial en Tiempo Real</h3>
+      <p>La Red de Estaciones Meteorológicas (REM) del gobierno de San Luis representa nuestra principal fuente de <strong>Verdad de Campo (Ground Truth)</strong>. Desplegada a lo largo de toda la topografía provincial, esta red de sensores automáticos in-situ envía actualizaciones de estado con intervalos de escasos minutos.</p>
+      <p>Nuestro ecosistema otorga la máxima ponderación estadística (hasta 5.0x de peso multiplicador en el algoritmo) a los datos provenientes de estos nodos locales, dado que no son "modelos teóricos de predicción" sino <strong>observaciones empíricas directas</strong> tomadas en la atmósfera superficial de tu localidad.</p>`
+  },
+  metar: {
+    title: "METAR: Estandarización Aeronáutica", icon: "plane",
+    html: `
+      <h3>Reportes Meteorológicos de Aeródromos</h3>
+      <p>Un METAR (Meteorological Aerodrome Report) es un estándar global homologado por la Organización de Aviación Civil Internacional (OACI). Estos reportes provienen directamente de torres de control y aeropuertos.</p>
+      <p>Tienen un nivel de precisión técnico superior, dado que las decisiones de despegue y aterrizaje de los aviones comerciales dependen exclusivamente de ellos. Aportan una validación empírica crucial a nuestro modelo matemático, corroborando presiones barométricas, visibilidad y bases de nubes reales.</p>`
+  },
+  meteostat: {
+    title: "Meteostat: Archivo y Observación Global", icon: "thermometer",
+    html: `
+      <h3>Red Global de Agregación</h3>
+      <p>Meteostat actúa como un gran repositorio institucional, canalizando flujos de datos en tiempo real de entes como la NOAA, el DWD (Servicio Meteorológico Alemán) y estaciones WMO de todos los continentes. Funciona como un excelente complemento y resguardo cruzado (backup) cuando la conectividad de estaciones locales presenta intermitencias.</p>`
+  },
+  owm: {
+    title: "OpenWeather: Simulaciones Globales", icon: "cloud-sun",
+    html: `
+      <h3>Inteligencia Artificial y Modelado Numérico</h3>
+      <p>OpenWeather utiliza un modelo matemático propio mejorado por Inteligencia Artificial de Aprendizaje Automático (Machine Learning). Ingiere cientos de miles de puntos de datos provenientes de satélites, radares terrestres y boyas oceánicas, generando una cuadrícula de asimilación continua que proyecta condiciones de manera notable a muy corto plazo.</p>`
+  },
+  om: {
+    title: "Open-Meteo: Predicciones Multi-Modelo", icon: "cloud-sun",
+    html: `
+      <h3>Integración GFS y ECMWF</h3>
+      <p>Open-Meteo no es solo un modelo aislado, sino un hub que ejecuta de forma eficiente datos de los gigantes mundiales del clima, como el Sistema Global de Predicción de Estados Unidos (GFS) y el prestigioso Modelo Europeo (ECMWF). Permite escalar la resolución espacial, logrando anticipar dinámicas térmicas y de precipitación con hasta 14 días de antelación.</p>`
+  },
+  metno: {
+    title: "MET Norway: Instituto Meteorológico Noruego", icon: "cloud-sun",
+    html: `
+      <h3>Excelencia Escandinava en Meteorología</h3>
+      <p>Desarrollado en alianza con la corporación oficial de radiodifusión NRK de Noruega, el modelo de <em>Yr / MET Norway</em> es famoso en la comunidad científica por su altísima fidelidad algorítmica, especialmente en las proyecciones de nubosidad y acumulados de nieve/lluvia. Sus supercomputadoras recalibran todo el globo terráqueo ofreciendo un pronóstico de asombrosa certidumbre estructural.</p>`
+  }
+};
+
 let map, marker, radarLayer;
 let selectedLat = null, selectedLon = null, selectedLocationName = "";
+let currentTheme = 'dark';
 
-function toggleModal(show) {
-  const modal = document.getElementById('tech-modal');
-  if (show) {
-    modal.classList.add('active');
-  } else {
-    modal.classList.remove('active');
-  }
+// --- CONTROL DE TEMA (DARK/LIGHT) ---
+function toggleTheme() {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.body.classList.toggle('light-theme', currentTheme === 'light');
+  document.getElementById('theme-icon').setAttribute('data-lucide', currentTheme === 'dark' ? 'sun' : 'moon');
+  lucide.createIcons();
 }
 
-// Cierre dinámico al golpear el background
-document.getElementById('tech-modal').addEventListener('click', function(e) {
+// --- CALCULO INTERNO DE SENSACION TERMICA ---
+function calcularSensacionTermica(T, V_kmh, H) {
+  if (T <= 10 && V_kmh > 4.8) {
+    let st = 13.12 + 0.6215 * T - 11.37 * Math.pow(V_kmh, 0.16) + 0.3965 * T * Math.pow(V_kmh, 0.16);
+    return `Sensación Térmica: ${st.toFixed(1)}°C`;
+  }
+  if (T >= 27 && H >= 40) {
+    let Tf = (T * 9/5) + 32;
+    let hi = -42.379 + 2.04901523*Tf + 10.14333127*H - 0.22475541*Tf*H - 0.00683783*Tf*Tf - 0.05481717*H*H + 0.00122874*Tf*Tf*H + 0.00085282*Tf*H*H - 0.00000199*Tf*Tf*H*H;
+    let stC = (hi - 32) * 5/9;
+    return `Índice de Calor: ${stC.toFixed(1)}°C`;
+  }
+  return `La temperatura se siente igual a la real.`;
+}
+
+// --- SISTEMA DE MODALES DINÁMICOS ---
+function openInfoModal(key) {
+  const data = textDB[key];
+  if (!data) return;
+  document.getElementById('modal-icon').setAttribute('data-lucide', data.icon);
+  document.getElementById('modal-title').innerText = data.title;
+  document.getElementById('modal-body').innerHTML = data.html;
+  lucide.createIcons();
+  toggleModal(true);
+}
+
+function toggleModal(show) {
+  const modal = document.getElementById('dynamic-modal');
+  if (show) { modal.classList.add('active'); } else { modal.classList.remove('active'); }
+}
+
+document.getElementById('dynamic-modal').addEventListener('click', function(e) {
   if (e.target === this) toggleModal(false);
 });
 
+// --- INICIALIZACIÓN ---
 function initMap(lat, lon, owmKey) {
   if (!map) {
     map = L.map("map").setView([lat, lon], 10);
@@ -349,9 +521,11 @@ function getWeatherIcon(descOrCode) {
     return "cloud";
   }
   const d = String(descOrCode).toLowerCase();
-  if (d.includes("clear") || d.includes("sol") || d.includes("despejado")) return "sun";
-  if (d.includes("storm") || d.includes("tormenta")) return "cloud-lightning";
-  if (d.includes("rain") || d.includes("lluvia") || d.includes("llovizna")) return "cloud-rain";
+  if (d.includes("despejado") || d.includes("sol") || d.includes("clear")) return "sun";
+  if (d.includes("nieve") || d.includes("snow")) return "snowflake";
+  if (d.includes("tormenta") || d.includes("storm")) return "cloud-lightning";
+  if (d.includes("lluvia") || d.includes("llovizna") || d.includes("rain") || d.includes("chubascos")) return "cloud-rain";
+  if (d.includes("niebla")) return "cloud-fog";
   return "cloud-sun";
 }
 
@@ -417,79 +591,60 @@ function cargar(lat, lon) {
 
 function render(data) {
   initMap(data.location.lat, data.location.lon, data.extra?.owmKey);
-  const mainDesc = data.models.sources.openweather?.desc || "";
+  const mainDesc = data.models.sources.openweather?.desc || "despejado";
   
+  // Render Tarjeta Principal
   document.getElementById("temp").innerHTML = data.consensus != null 
-      ? `<div style="display: flex; align-items: center; gap: 18px;"><i data-lucide="${getWeatherIcon(mainDesc)}" style="width: 50px; height: 50px; color: #fdba74;"></i> ${data.consensus} &deg;C</div>` 
+      ? `<i data-lucide="${getWeatherIcon(mainDesc)}" style="width: 60px; height: 60px; color: #fdba74;"></i> ${data.consensus} &deg;C` 
       : "-- &deg;C";
+
+  document.getElementById("temp-condition").innerText = mainDesc;
+  
+  const vViento = data.consensus_fields.windSpeed || 0;
+  const hAmbiente = data.consensus_fields.humidity || 50;
+  document.getElementById("temp-st").innerText = data.consensus != null ? calcularSensacionTermica(data.consensus, vViento, hAmbiente) : "";
 
   document.getElementById("confidence").innerHTML = `Confiabilidad del algoritmo: <strong style="color: #4ade80;">${data.confidence.toUpperCase()}</strong>`;
   document.getElementById("locationName").innerText = selectedLocationName || data.location?.name || "Ubicación desconocida";
 
   const cf = data.consensus_fields;
   document.getElementById("consensus-dashboard").innerHTML = `
-    <div class="dashboard-item">
-      <i data-lucide="droplet"></i>
-      <div>
-        <div class="dashboard-label">Humedad</div>
-        <div class="dashboard-value">${cf.humidity ?? '--'}%</div>
-      </div>
-    </div>
-    <div class="dashboard-item">
-      <i data-lucide="wind"></i>
-      <div>
-        <div class="dashboard-label">Viento</div>
-        <div class="dashboard-value">${cf.windSpeed ?? '--'} km/h <span style="font-size:12px; color:#9fb0c7;">(${cf.windDir})</span></div>
-      </div>
-    </div>
-    <div class="dashboard-item">
-      <i data-lucide="gauge"></i>
-      <div>
-        <div class="dashboard-label">Presión</div>
-        <div class="dashboard-value">${cf.pressure ?? '--'} hPa</div>
-      </div>
-    </div>
-    <div class="dashboard-item">
-      <i data-lucide="eye"></i>
-      <div>
-        <div class="dashboard-label">Visibilidad</div>
-        <div class="dashboard-value">${cf.visibility ?? '--'} km</div>
-      </div>
-    </div>
-    <div class="dashboard-item">
-      <i data-lucide="cloud-rain"></i>
-      <div>
-        <div class="dashboard-label">Precipitación</div>
-        <div class="dashboard-value">${cf.precipitation ?? '0'} mm</div>
-      </div>
-    </div>
+    <div class="dashboard-item"><i data-lucide="droplet"></i><div><div class="dashboard-label">Humedad</div><div class="dashboard-value">${cf.humidity ?? '--'}%</div></div></div>
+    <div class="dashboard-item"><i data-lucide="wind"></i><div><div class="dashboard-label">Viento</div><div class="dashboard-value">${cf.windSpeed ?? '--'} km/h <span style="font-size:12px; color:inherit;">(${cf.windDir})</span></div></div></div>
+    <div class="dashboard-item"><i data-lucide="gauge"></i><div><div class="dashboard-label">Presión</div><div class="dashboard-value">${cf.pressure ?? '--'} hPa</div></div></div>
+    <div class="dashboard-item"><i data-lucide="eye"></i><div><div class="dashboard-label">Visibilidad</div><div class="dashboard-value">${cf.visibility ?? '--'} km</div></div></div>
+    <div class="dashboard-item"><i data-lucide="cloud-rain"></i><div><div class="dashboard-label">Precipitación</div><div class="dashboard-value">${cf.precipitation ?? '0'} mm</div></div></div>
   `;
 
-  const includedModelsCount = Object.values(data.models.sources).filter(s => s.usedInConsensus).length;
-  const totalModelsCount = Object.values(data.models.sources).filter(s => s.temp != null).length;
-  const totalSourcesCount = includedModelsCount + (data.observation.metar.usedInConsensus ? 1 : 0) + (data.extra.meteostat.usedInConsensus ? 1 : 0) + (data.observation.rem?.usedInConsensus ? 1 : 0);
-
-  document.getElementById("avg").innerHTML = `Promedio estricto de modelos: <strong>${data.models.average ?? "-"} &deg;C</strong> <span style="font-size: 14px; color:#9fb0c7;">(evaluando ${totalModelsCount} modelos)</span>`;
-  document.getElementById("sources").innerHTML = `Consenso general: <strong>${totalSourcesCount} fuentes integradas</strong> al promedio`;
-
+  // Render Salud, Agro y Calidad del Aire (Tarjetas separadas)
+  const prem = data.premium;
   document.getElementById("premium-grid").innerHTML = `
     <div class="api-card">
-      <div class="api-title"><span>Calidad del Aire</span> ${getAQIBadge(data.premium.aqi)}</div>
-      <div class="api-temp" style="font-size: 32px;">${data.premium.aqi ?? "--"} <span style="font-size: 16px; color:#c0d4ea;">AQI</span></div>
-      <div class="api-detail"><i data-lucide="wind" style="width: 14px; height: 14px; vertical-align: middle;"></i> PM10: ${data.premium.pm10 ?? "--"} µg/m³</div>
+      <div class="api-title"><span>Calidad del Aire</span> <button onclick="openInfoModal('aqi')" class="info-btn info-btn-small"><i data-lucide="info" style="width:12px;height:12px;"></i> <span>+ Info</span></button></div>
+      <div class="api-temp" style="font-size: 32px; margin-bottom: 5px;">${prem.aqi ?? "--"} <span style="font-size: 14px; color:inherit;">AQI</span></div>
+      <div style="margin-bottom: 14px;">${getAQIBadge(prem.aqi)}</div>
+      <div class="api-detail"><i data-lucide="wind" style="width: 14px; height: 14px; vertical-align: middle;"></i> PM10: ${prem.pm10 ?? "--"} µg/m³</div>
+      <div class="api-detail"><i data-lucide="flower" style="width: 14px; height: 14px; vertical-align: middle;"></i> Polen estacional: ${prem.pollen ? prem.pollen + ' ppm' : 'Bajo'}</div>
     </div>
+
     <div class="api-card">
-      <div class="api-title"><span>Índice UV Solar</span> ${getUVBadge(data.premium.uv)}</div>
-      <div class="api-temp" style="font-size: 32px;">${data.premium.uv ?? "--"} <span style="font-size: 16px; color:#c0d4ea;">Máx. Hoy</span></div>
+      <div class="api-title"><span>Índice UV</span> <button onclick="openInfoModal('uv')" class="info-btn info-btn-small"><i data-lucide="info" style="width:12px;height:12px;"></i> <span>+ Info</span></button></div>
+      <div class="api-temp" style="font-size: 32px; margin-bottom: 5px;">${prem.uv ?? "--"} <span style="font-size: 14px; color:inherit;">UV Index</span></div>
+      <div style="margin-bottom: 14px;">${getUVBadge(prem.uv)}</div>
+      <div class="api-detail"><i data-lucide="shield-alert" style="width: 14px; height: 14px; vertical-align: middle;"></i> Protección recomendada según radiación solar máxima.</div>
     </div>
+
     <div class="api-card">
-      <div class="api-title"><span>Datos Agrometeorológicos</span> <i data-lucide="sprout" style="width: 20px; height: 20px; color: #4ade80;"></i></div>
-      <div class="api-detail" style="font-size: 15px; color: white;">Prob. de Lluvia: <strong style="color: #60a5fa;">${data.premium.rainProb ?? 0}%</strong></div>
-      <div class="api-detail" style="font-size: 15px; color: white;">Humedad de Sup.: <strong>${data.premium.agro.humidity ?? "--"}%</strong></div>
-      <div class="api-detail" style="font-size: 15px; color: white;">Riesgo Heladas: <strong style="color: ${data.premium.agro.frost === 'Alta' ? '#f87171' : '#4ade80'};">${data.premium.agro.frost}</strong></div>
+      <div class="api-title"><span>Agrometeorología</span> <button onclick="openInfoModal('agro')" class="info-btn info-btn-small"><i data-lucide="info" style="width:12px;height:12px;"></i> <span>+ Info</span></button></div>
+      <div class="api-detail" style="font-size: 13.5px; margin-bottom: 6px;">Prob. Lluvia Hoy: <strong style="color: #60a5fa;">${prem.rainProb ?? 0}%</strong></div>
+      <div class="api-detail" style="font-size: 13.5px; margin-bottom: 6px;">Punto de Rocío: <strong>${prem.agro.dewPoint ?? "--"}°C</strong></div>
+      <div class="api-detail" style="font-size: 13.5px; margin-bottom: 6px;">Evapotranspiración (ET₀): <strong>${prem.agro.et0 ?? "--"} mm/día</strong></div>
+      <div class="api-detail" style="font-size: 13.5px; margin-bottom: 6px;">Riesgo Heladas: <strong style="color: ${prem.agro.frost === 'Alta' ? '#f87171' : '#4ade80'};">${prem.agro.frost}</strong></div>
+      <div class="api-detail" style="font-size: 13.5px; margin-bottom: 2px; display:flex; align-items:center; gap:6px;">Fase Lunar: <strong>${prem.agro.lunarPhase.name}</strong> <span style="font-size:16px;">${prem.agro.lunarPhase.emoji}</span></div>
     </div>
   `;
 
+  // Render Pronóstico Extendido
   const forecastContainer = document.getElementById("forecast");
   if (data.daily && data.daily.length) {
     forecastContainer.innerHTML = "";
@@ -503,31 +658,50 @@ function render(data) {
           <div class="forecast-temps"><span style="color: #ef4444;">${day.max ?? "-"}°</span><span class="min">${day.min ?? "-"}°</span></div>
           <div class="forecast-extra">
             💧 Prob. Lluvia: <strong>${day.rainProb}%</strong><br>
-            💨 Ráfagas Máx: <strong>${day.windMax ?? '--'} km/h</strong> <span style="color: #cbd5e1; font-weight: 600;">(${day.windDir ?? 'N/A'})</span>
+            💨 Ráfagas: <strong>${day.windMax ?? '--'} km/h</strong> <span style="opacity:0.8;">(${day.windDir ?? 'N/A'})</span>
           </div>
         </div>
       `;
     });
   }
 
+  // Render Información de Consenso y Promedio en info-box
+  const totalModelsCount = Object.keys(data.models.sources).length;
+  const integratedSourcesCount = Object.values(data.models.sources).filter(s => s.usedInConsensus).length +
+    (data.observation.rem?.usedInConsensus ? 1 : 0) +
+    (data.observation.metar?.usedInConsensus ? 1 : 0) +
+    (data.extra?.meteostat?.usedInConsensus ? 1 : 0);
+
+  document.getElementById("avg").innerText = `Promedio estricto de modelos: ${data.models.average ?? "--"} °C (evaluando ${totalModelsCount} modelos).`;
+  document.getElementById("sources").innerText = `Consenso general: ${data.consensus ?? "--"} °C (${integratedSourcesCount} fuentes integradas al promedio).`;
+
+  // Render Modelos (Condición climática inmediatamente debajo de la temperatura)
   const modelsContainer = document.getElementById("models-grid");
   modelsContainer.innerHTML = "";
   const names = { openweather: "OpenWeather", openmeteo: "Open-Meteo", metno: "MET Norway" };
+  const keysModel = { openweather: "owm", openmeteo: "om", metno: "metno" };
   for (const key in data.models.sources) {
     const s = data.models.sources[key];
     modelsContainer.innerHTML += `
       <div class="api-card">
-        <div class="api-title"><span>${names[key]}</span><i data-lucide="${getWeatherIcon(s.desc || key)}" style="width: 20px; height: 20px; color: #9cc6ff;"></i></div>
+        <div class="api-title">
+          <span>${names[key]}</span>
+          <div style="display:flex; gap:8px; align-items:center;">
+             <button onclick="openInfoModal('${keysModel[key]}')" class="info-btn info-btn-small" style="margin:0;"><i data-lucide="info" style="width:12px;height:12px;"></i> <span>+ Info</span></button>
+             <i data-lucide="${getWeatherIcon(s.desc)}" style="width: 22px; height: 22px; color: #9cc6ff;"></i>
+          </div>
+        </div>
         <div class="api-temp">${s.temp ?? "-"} &deg;C</div>
+        ${s.desc ? `<div class="api-detail" style="text-transform: capitalize; margin-bottom: 12px; font-weight: 500; opacity: 0.9;">${s.desc}</div>` : ''}
         <div class="api-detail">Humedad: ${s.humidity ?? "-"}%</div>
         <div class="api-detail">Viento: ${s.windSpeed ?? "-"} km/h</div>
         <div class="api-detail">Presión: ${s.pressure ?? "-"} hPa</div>
-        <div class="api-detail ok">${s.desc ?? ""}</div>
         ${getConsensusStatusBadge(s.usedInConsensus, s.temp)}
       </div>
     `;
   }
 
+  // Render Observaciones
   const obsContainer = document.getElementById("obs-grid");
   const rem = data.observation.rem;
   let remCardHtml = "";
@@ -535,13 +709,13 @@ function render(data) {
     let remFieldsHtml = "";
     if (rem.temp !== null) {
       if (rem.humidity !== null) remFieldsHtml += `<div class="api-detail"><i data-lucide="droplet" style="width: 13px; height: 13px; display:inline-block; vertical-align:middle; margin-right:5px; color:#38bdf8;"></i>Humedad: ${rem.humidity}%</div>`;
-      if (rem.windSpeed !== null) remFieldsHtml += `<div class="api-detail"><i data-lucide="wind" style="width: 13px; height: 13px; display:inline-block; vertical-align:middle; margin-right:5px; color:#cbd5e1;"></i>Viento: ${rem.windSpeed} km/h (${rem.windDir ?? ''})</div>`;
+      if (rem.windSpeed !== null) remFieldsHtml += `<div class="api-detail"><i data-lucide="wind" style="width: 13px; height: 13px; display:inline-block; vertical-align:middle; margin-right:5px; color:inherit;"></i>Viento: ${rem.windSpeed} km/h (${rem.windDir ?? ''})</div>`;
       if (rem.pressure !== null) remFieldsHtml += `<div class="api-detail"><i data-lucide="gauge" style="width: 13px; height: 13px; display:inline-block; vertical-align:middle; margin-right:5px; color:#a78bfa;"></i>Presión: ${rem.pressure} hPa</div>`;
       if (rem.rain !== null) remFieldsHtml += `<div class="api-detail"><i data-lucide="cloud-rain" style="width: 13px; height: 13px; display:inline-block; vertical-align:middle; margin-right:5px; color:#60a5fa;"></i>Precipitación: ${rem.rain} mm</div>`;
     }
     remCardHtml = `
       <div class="api-card">
-        <div class="api-title"><span>Red REM San Luis</span><i data-lucide="shield-check" style="width: 20px; height: 20px; color: #4ade80;"></i></div>
+        <div class="api-title"><span>Red REM San Luis</span> <button onclick="openInfoModal('rem')" class="info-btn info-btn-small"><i data-lucide="info" style="width:12px;height:12px;"></i> <span>+ Info</span></button></div>
         <div class="api-temp">${rem.temp !== null ? rem.temp + ' &deg;C' : '- &deg;C'}</div>
         <div class="api-detail" style="color: #60a5fa; font-weight:600;">Estación: ${rem.station}</div>
         <div class="api-detail" style="font-size:12px; opacity:0.8; margin-bottom:10px;">${rem.note || ""}</div>
@@ -555,23 +729,20 @@ function render(data) {
   obsContainer.innerHTML = `
     ${remCardHtml}
     <div class="api-card">
-      <div class="api-title"><span>Estación METAR</span><i data-lucide="plane" style="width: 20px; height: 20px; color: #b8dc61;"></i></div>
+      <div class="api-title"><span>Estación METAR</span> <button onclick="openInfoModal('metar')" class="info-btn info-btn-small"><i data-lucide="info" style="width:12px;height:12px;"></i> <span>+ Info</span></button></div>
       <div class="api-temp">${metar.temp ?? "-"} &deg;C</div>
       <div class="api-detail" style="font-weight: 600; color: #b8dc61;">${metar.station || "Sin estación cercana"}</div>
       <div class="api-detail" style="font-size: 12px; opacity: 0.8; margin-bottom: 8px;">${metar.note ?? ""}</div>
       ${metar.humidity ? `<div class="api-detail">Humedad: ${metar.humidity}%</div>` : ''}
       ${metar.windSpeed ? `<div class="api-detail">Viento: ${metar.windSpeed} km/h (${metar.windDir ?? ''})</div>` : ''}
-      ${metar.pressure ? `<div class="api-detail">Presión: ${metar.pressure} hPa</div>` : ''}
-      ${metar.visibility ? `<div class="api-detail">Visibilidad: ${metar.visibility} km</div>` : ''}
       ${getConsensusStatusBadge(metar.usedInConsensus, metar.temp)}
     </div>
     <div class="api-card">
-      <div class="api-title"><span>Meteostat</span><i data-lucide="thermometer" style="width: 20px; height: 20px; color: #b8dc61;"></i></div>
+      <div class="api-title"><span>Meteostat</span> <button onclick="openInfoModal('meteostat')" class="info-btn info-btn-small"><i data-lucide="info" style="width:12px;height:12px;"></i> <span>+ Info</span></button></div>
       <div class="api-temp">${data.extra.meteostat.temp ?? "-"} &deg;C</div>
       <div class="api-detail" style="font-weight: 600;">${data.extra.meteostat.station || "Sin estación cercana"}</div>
       <div class="api-detail" style="font-size: 12px; opacity: 0.8; margin-bottom: 8px;">${data.extra.meteostat.desc}</div>
       ${data.extra.meteostat.humidity ? `<div class="api-detail">Humedad: ${data.extra.meteostat.humidity}%</div>` : ''}
-      ${data.extra.meteostat.windSpeed ? `<div class="api-detail">Viento: ${data.extra.meteostat.windSpeed} km/h</div>` : ''}
       ${getConsensusStatusBadge(data.extra.meteostat.usedInConsensus, data.extra.meteostat.temp)}
     </div>
   `;
