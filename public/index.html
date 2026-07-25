@@ -60,13 +60,42 @@ body {
 .autocomplete-detail { margin-top: 4px; color: #9fb0c7; font-size: 13px; }
 
 .container { max-width: 1250px; margin: auto; padding: 24px; }
+
+/* NUEVO CUADRO SUPERIOR (TOP DISCLAIMER) */
+.top-disclaimer {
+  background: rgba(18, 25, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  padding: 18px 24px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  backdrop-filter: blur(14px);
+}
+.disclaimer-text {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #9fb0c7;
+  line-height: 1.5;
+}
+.disclaimer-text strong {
+  color: white;
+}
+@media(max-width: 900px) {
+  .top-disclaimer { flex-direction: column; align-items: flex-start; }
+}
+
 .main-card {
   background: rgba(18, 25, 42, 0.82); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 26px;
   padding: 28px; backdrop-filter: blur(14px); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); margin-bottom: 24px;
 }
 .temp-main { font-size: 74px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 15px;}
 .temp-condition { font-size: 22px; font-weight: 500; color: #bcd3ee; margin-top: 5px; text-transform: capitalize; }
-.temp-st { font-size: 16px; color: #9fb0c7; margin-top: 8px; font-weight: 500; }
+.temp-st { font-size: 16px; color: #9fb0c7; font-weight: 500; }
 
 .confidence-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; margin-bottom: 20px; }
 .confidence { color: #9cc6ff; font-size: 18px; }
@@ -77,8 +106,17 @@ body {
   color: #9cc6ff; padding: 6px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
   cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;
 }
-.info-btn-small { padding: 5px 10px; font-size: 12px; margin-left: auto; background: rgba(59, 130, 246, 0.15); border-color: rgba(96, 165, 250, 0.3); color: #60a5fa; }
+.info-btn-small { padding: 5px 10px; font-size: 12px; background: rgba(59, 130, 246, 0.15); border-color: rgba(96, 165, 250, 0.3); color: #60a5fa; }
 .info-btn:hover { background: rgba(59, 130, 246, 0.25); color: white; border-color: rgba(96, 165, 250, 0.5); transform: translateY(-1px); }
+
+/* TARJETA DE INSIGHTS (CONSENSO) */
+.insights-banner {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 24px;
+}
 
 .temp-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 20px; }
 .location-main { font-size: 32px; font-weight: 600; color: #bcd3ee; }
@@ -158,18 +196,18 @@ body {
 /* THEME: LIGHT MODE OVERRIDES & LEGIBILITY */
 body.light-theme { background: linear-gradient(rgba(240, 244, 250, 0.95), rgba(240, 244, 250, 0.98)), url('https://images.unsplash.com/photo-1501630834273-4b5604d2ee31?q=80&w=1600&auto=format&fit=crop'); color: #0f172a; }
 body.light-theme .header { background: rgba(226, 232, 240, 0.92); border-bottom: 1px solid rgba(0,0,0,0.12); }
-
-/* NUEVO: Contraste del logo en modo claro */
 body.light-theme .logo-container { background: rgba(255, 255, 255, 0.85); padding: 8px 16px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.08); }
 
 body.light-theme .main-card, body.light-theme .api-card, body.light-theme .info-box, body.light-theme .forecast-card { background: rgba(255, 255, 255, 0.92); border-color: rgba(0, 0, 0, 0.12); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08); color: #0f172a; }
+body.light-theme .top-disclaimer { background: rgba(255, 255, 255, 0.92); border-color: rgba(0, 0, 0, 0.12); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+body.light-theme .disclaimer-text { color: #334155; }
+body.light-theme .disclaimer-text strong { color: #0f172a; }
 body.light-theme .search-box { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); }
 body.light-theme .search-box input { color: #0f172a; }
 body.light-theme .search-icon { color: #334155; }
 body.light-theme .theme-switch { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.12); color: #0f172a; }
 body.light-theme .theme-switch:hover { background: rgba(0,0,0,0.12); }
 
-/* NUEVO: Fuente negra en paneles desplegables (autocomplete) */
 body.light-theme .autocomplete { background: #ffffff; border-color: rgba(0,0,0,0.1); box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
 body.light-theme .autocomplete-item { border-bottom-color: rgba(0,0,0,0.05); color: #000000; }
 body.light-theme .autocomplete-item:hover { background: rgba(0,0,0,0.05); }
@@ -179,7 +217,6 @@ body.light-theme .autocomplete-detail { color: #475569; }
 body.light-theme .modal-card { background: #ffffff; border-color: rgba(0,0,0,0.1); color: #0f172a; }
 body.light-theme .modal-header, body.light-theme .modal-footer { background: #f8fafc; border-color: rgba(0,0,0,0.1); }
 
-/* NUEVO: Fuente negra en modales para legibilidad estricta */
 body.light-theme .modal-body { color: #000000; }
 body.light-theme .modal-body strong { color: #000000; }
 body.light-theme .modal-close-btn { color: #64748b; }
@@ -195,7 +232,6 @@ body.light-theme .forecast-date, body.light-theme .confidence { color: #2563eb; 
 body.light-theme .contact-footer, body.light-theme .legend-footer { background: rgba(255,255,255,0.85); border-color: rgba(0,0,0,0.1); color: #1e293b; }
 body.light-theme .contact-footer span { color: #0f172a; }
 
-/* NUEVO: Contraste del copyright en pie de pagina en modo claro */
 body.light-theme .copyright-footer { color: #475569; font-weight: 500; }
 
 body.light-theme .info-btn { color: #2563eb; border-color: rgba(37, 99, 235, 0.2); background: rgba(59, 130, 246, 0.08); }
@@ -207,6 +243,17 @@ body.light-theme .info-box div[style*="background: rgba(0,0,0,0.2)"] {
 }
 body.light-theme .info-box div[style*="background: rgba(0,0,0,0.2)"] strong {
   color: #0f172a !important;
+}
+
+body.light-theme .insights-banner {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+body.light-theme .insights-banner .insights-title {
+  color: #2563eb !important;
+}
+body.light-theme .insights-banner .insights-desc {
+  color: #334155 !important;
 }
 
 .contact-footer {
@@ -260,29 +307,58 @@ body.light-theme .info-box div[style*="background: rgba(0,0,0,0.2)"] strong {
 
 <div class="container">
 
+  <!-- CUADRO SUPERIOR NUEVO SEGÚN IMAGEN -->
+  <div class="top-disclaimer">
+    <div class="disclaimer-text">
+      <i data-lucide="sparkles" style="width: 20px; height: 20px; color: #e2e8f0; flex-shrink: 0;"></i>
+      <span>El pronóstico que ves no proviene de un único proveedor. <strong>Central de Clima</strong> analiza múltiples modelos meteorológicos y datos telemétricos en tiempo real para generar un consenso inteligente con mayor confiabilidad.</span>
+    </div>
+    <button class="info-btn" onclick="openInfoModal('consenso')" style="white-space: nowrap;">¿Cómo funciona? <i data-lucide="info" style="width: 14px; height: 14px;"></i></button>
+  </div>
+
   <div class="main-card">
     <div class="temp-row">
       <div>
         <h1 id="temp" class="temp-main">-- &deg;C</h1>
         <div id="temp-condition" class="temp-condition">Cargando...</div>
-        <div id="temp-st" class="temp-st"></div>
+        <!-- SENSACIÓN TÉRMICA CON BOTÓN AL LADO -->
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
+          <div id="temp-st" class="temp-st" style="margin-top: 0;">Sensación Térmica: --°C</div>
+          <button id="st-info-btn" onclick="openInfoModal('sensacion')" class="info-btn info-btn-small" style="display: inline-flex; margin: 0; padding: 4px 10px;">
+            <i data-lucide="info" style="width:12px;height:12px;"></i> <span>+ Info</span>
+          </button>
+        </div>
       </div>
       <div id="locationName" class="location-main">Cargando ubicación...</div>
     </div>
     
     <div class="confidence-row">
-      <div id="confidence" class="confidence">Consenso Analítico: Ponderando fuentes</div>
-      <button onclick="openInfoModal('consenso')" class="info-btn">
-        <span>¿Cómo funciona?</span>
-        <i data-lucide="info" style="width: 14px; height: 14px;"></i>
-      </button>
+      <div id="confidence" class="confidence">Índice de confiabilidad del algoritmo: --</div>
+    </div>
+    
+    <!-- TARJETA VISIBLE DE INSIGHTS -->
+    <div class="insights-banner">
+      <div style="display: flex; gap: 14px; align-items: flex-start;">
+        <div style="margin-top: 2px;">
+            <i data-lucide="brain" style="width: 28px; height: 28px; color: #60a5fa;"></i>
+        </div>
+        <div style="flex: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div class="insights-title" style="font-weight: 600; font-size: 17px; color: #60a5fa;">Inteligencia de Consenso en Tiempo Real</div>
+          </div>
+          <p class="insights-desc" id="insights-text" style="color: #9fb0c7; font-size: 14px; line-height: 1.6; margin: 8px 0 0 0;">
+            Cruzamos modelos globales (OpenWeather, Open-Meteo, MET Norway) con observaciones físicas locales (METAR y REM) para eliminar desvíos y ofrecerte un pronóstico térmico con anclaje real.
+          </p>
+        </div>
+      </div>
     </div>
     
     <div class="consensus-dashboard" id="consensus-dashboard"></div>
-
+    <!--
     <div style="width: 100%; height: 90px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; margin-top: 30px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4); font-size: 14px;">
       Espacio reservado para AdSense (728x90)
     </div>
+    -->
   </div>
 
   <h2 class="section-title">📅 Pronóstico Extendido</h2>
@@ -356,7 +432,7 @@ body.light-theme .info-box div[style*="background: rgba(0,0,0,0.2)"] strong {
 // --- TEXTOS EDITORIALES PARA ADSENSE (MODALES) ---
 const textDB = {
   consenso: {
-    title: "Análisis Técnico y Sensación Térmica", icon: "book-open",
+    title: "Análisis Técnico de Consenso", icon: "brain",
     html: `
       <h3>¿Por qué la Central de Clima no depende de un solo modelo meteorológico?</h3>
       <p>La predicción atmosférica moderna enfrenta un desafío estructural: los microclimas y la topografía local introducen márgenes de error impredecibles en las simulaciones globales. Al depender de una sola fuente, los usuarios quedan expuestos a sesgos matemáticos puntuales conocidos como anomalías de nodo predictivo.</p>
@@ -366,11 +442,14 @@ const textDB = {
       <p>Para evitar que los modelos numéricos se desvíen de la realidad física, el algoritmo establece anclajes de verdad de campo utilizando estaciones meteorológicas automáticas de alta precisión y redes provinciales o aeronáuticas. Cualquier simulación numérica que presente una divergencia anómala respecto a estas mediciones empíricas es ponderada a la baja o excluida temporalmente del cálculo central.</p>
 
       <h3>Variables Secundarias Entrelazadas</h3>
-      <p>El consenso no opera únicamente sobre la temperatura. Las variables secundarias como humedad, presión atmosférica, velocidad del viento y visibilidad también son sometidas a un filtrado cruzado estricto entre las fuentes validadas, garantizando que todo el panel de métricas guarde coherencia termodinámica interna.</p>
-
+      <p>El consenso no opera únicamente sobre la temperatura. Las variables secundarias como humedad, presión atmosférica, velocidad del viento y visibilidad también son sometidas a un filtrado cruzado estricto entre las fuentes validadas, garantizando que todo el panel de métricas guarde coherencia termodinámica interna.</p>`
+  },
+  sensacion: {
+    title: "Sensación Térmica: El factor humano", icon: "thermometer-sun",
+    html: `
       <h3>Sensación Térmica: El factor humano</h3>
       <p>A toda esta amalgama de datos añadimos el cálculo interno de la <strong>Sensación Térmica</strong>. Este índice no proviene de las fuentes externas de manera aislada, sino que lo calculamos en nuestros propios servidores combinando de forma estricta los datos ya consensuados de <strong>temperatura, velocidad del viento y humedad relativa</strong>.</p>
-      <p>Para garantizar precisión humana, el algoritmo emplea dos fórmulas avaladas por la Organización Meteorológica Mundial:</p>
+      <p>Para garantizar precisión humana, el algoritmo emplea fórmulas avaladas por la Organización Meteorológica Mundial:</p>
       <ul class="editorial-list">
         <li><strong>Enfriamiento Eólico (Wind Chill):</strong> Se activa automáticamente con temperaturas inferiores a 10°C y vientos considerables. El viento desplaza la capa aislante de aire cálido alrededor del cuerpo, acelerando la pérdida de calor. <em>Fórmula utilizada: W = 13.12 + 0.6215*T<sub>a</sub> - 11.37*V<sup>0.16</sup> + 0.3965*T<sub>a</sub>*V<sup>0.16</sup></em>.</li>
         <li><strong>Índice de Calor (Heat Index):</strong> Se activa con temperaturas superiores a 27°C y humedad superior al 40%. La alta humedad satura el aire limitando la evaporación del sudor humano, lo que impide que el cuerpo se enfríe de manera natural. <em>Utilizamos la ecuación múltiple de Rothfusz fundamentada en mediciones termodinámicas.</em></li>
@@ -453,8 +532,12 @@ function toggleTheme() {
   lucide.createIcons();
 }
 
-// --- CALCULO INTERNO DE SENSACION TERMICA ---
+// --- CÁLCULO INTERNO DE SENSACIÓN TÉRMICA ROBUSTO ---
 function calcularSensacionTermica(T, V_kmh, H) {
+  let V_ms = (V_kmh || 0) / 3.6;
+  let es = 6.1078 * Math.exp((17.27 * T) / (T + 237.3));
+  let e = ((H || 50) / 100) * es;
+
   if (T <= 10 && V_kmh > 4.8) {
     let st = 13.12 + 0.6215 * T - 11.37 * Math.pow(V_kmh, 0.16) + 0.3965 * T * Math.pow(V_kmh, 0.16);
     return `Sensación Térmica: ${st.toFixed(1)}°C`;
@@ -465,7 +548,8 @@ function calcularSensacionTermica(T, V_kmh, H) {
     let stC = (hi - 32) * 5/9;
     return `Índice de Calor: ${stC.toFixed(1)}°C`;
   }
-  return `La temperatura se siente igual a la real.`;
+  let stGeneral = T + 0.33 * e - 0.70 * V_ms - 4.00;
+  return `Sensación Térmica: ${stGeneral.toFixed(1)}°C`;
 }
 
 // --- SISTEMA DE MODALES DINÁMICOS ---
@@ -602,9 +686,19 @@ function render(data) {
   
   const vViento = data.consensus_fields.windSpeed || 0;
   const hAmbiente = data.consensus_fields.humidity || 50;
-  document.getElementById("temp-st").innerText = data.consensus != null ? calcularSensacionTermica(data.consensus, vViento, hAmbiente) : "";
+  const stText = data.consensus != null ? calcularSensacionTermica(data.consensus, vViento, hAmbiente) : "Sensación Térmica: --°C";
+  
+  document.getElementById("temp-st").innerText = stText;
+  document.getElementById("st-info-btn").style.display = "inline-flex";
 
-  document.getElementById("confidence").innerHTML = `Confiabilidad del algoritmo: <strong style="color: #4ade80;">${data.confidence.toUpperCase()}</strong>`;
+  // Lógica de porcentaje de confiabilidad del algoritmo
+  const confObj = data.confidence || { level: "MEDIO", percent: 80 };
+  let confColor = "#4ade80"; 
+  if (confObj.level === "MEDIO") confColor = "#facc15"; 
+  if (confObj.level === "BAJO") confColor = "#f87171"; 
+
+  document.getElementById("confidence").innerHTML = `Índice de confiabilidad del algoritmo: <strong style="color: ${confColor};">${confObj.level} (${confObj.percent}%)</strong>`;
+  
   document.getElementById("locationName").innerText = selectedLocationName || data.location?.name || "Ubicación desconocida";
 
   const cf = data.consensus_fields;
@@ -616,7 +710,7 @@ function render(data) {
     <div class="dashboard-item"><i data-lucide="cloud-rain"></i><div><div class="dashboard-label">Precipitación</div><div class="dashboard-value">${cf.precipitation ?? '0'} mm</div></div></div>
   `;
 
-  // Render Salud, Agro y Calidad del Aire (Tarjetas separadas)
+  // Render Salud, Agro y Calidad del Aire
   const prem = data.premium;
   document.getElementById("premium-grid").innerHTML = `
     <div class="api-card">
@@ -675,7 +769,7 @@ function render(data) {
   document.getElementById("avg").innerText = `Promedio estricto de modelos: ${data.models.average ?? "--"} °C (evaluando ${totalModelsCount} modelos).`;
   document.getElementById("sources").innerText = `Consenso general: ${data.consensus ?? "--"} °C (${integratedSourcesCount} fuentes integradas al promedio).`;
 
-  // Render Modelos (Condición climática inmediatamente debajo de la temperatura)
+  // Render Modelos
   const modelsContainer = document.getElementById("models-grid");
   modelsContainer.innerHTML = "";
   const names = { openweather: "OpenWeather", openmeteo: "Open-Meteo", metno: "MET Norway" };

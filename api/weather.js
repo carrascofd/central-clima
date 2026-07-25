@@ -524,6 +524,13 @@ export default async function handler(req, res) {
     const modelAnalysis = calculateAdvancedConsensus(rawSources.filter(s => s.type === 'model'));
     const isUsed = (id) => generalAnalysis.acceptedIds.includes(id);
 
+    // Lógica dinámica de Confiabilidad
+    let confLevel = "BAJO";
+    let confPercent = 65;
+    if (generalAnalysis.acceptedIds.length >= 4) { confLevel = "ALTO"; confPercent = 98; }
+    else if (generalAnalysis.acceptedIds.length === 3) { confLevel = "ALTO"; confPercent = 95; }
+    else if (generalAnalysis.acceptedIds.length === 2) { confLevel = "MEDIO"; confPercent = 80; }
+
     const consensus_fields = {
       humidity: calculateSecondaryConsensus(rawSources, 'humidity', generalAnalysis.acceptedIds, true),
       windSpeed: calculateSecondaryConsensus(rawSources, 'windSpeed', generalAnalysis.acceptedIds),
@@ -578,7 +585,7 @@ export default async function handler(req, res) {
 
     const result = {
       consensus: generalAnalysis.value,
-      confidence: generalAnalysis.acceptedIds.length >= 3 ? "alta" : "media",
+      confidence: { level: confLevel, percent: confPercent },
       location: { name: resolvedCityName, lat: baseLat, lon: baseLon },
       consensus_fields,
       models: {
